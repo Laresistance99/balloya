@@ -8,9 +8,9 @@ function statusIsLive(short) {
 
 async function apiFetch(path, key) {
   const res = await fetch(`${API_BASE}${path}`, { headers: { "x-apisports-key": key } });
-  if (!res.ok) throw new Error(`API-Football error ${res.status}`);
   const json = await res.json();
-  return json.response;
+  if (!res.ok) throw new Error(`API-Football error ${res.status}: ${JSON.stringify(json.errors || json)}`);
+  return json;
 }
 
 export default async (req, context) => {
@@ -28,10 +28,20 @@ export default async (req, context) => {
     const from = new Date(today.getTime() - 10 * 86400000).toISOString().slice(0, 10);
     const to = new Date(today.getTime() + 10 * 86400000).toISOString().slice(0, 10);
 
-    const [standingsResp, fixturesResp] = await Promise.all([
+    const [standingsJson, fixturesJson] = await Promise.all([
       apiFetch(`/standings?league=${LEAGUE_ID}&season=${SEASON}`, apiKey),
       apiFetch(`/fixtures?league=${LEAGUE_ID}&season=${SEASON}&from=${from}&to=${to}`, apiKey),
     ]);
+
+    const debug = {
+      standingsErrors: standingsJson.errors,
+      standingsResultsCount: standingsJson.results,
+      fixturesErrors: fixturesJson.errors,
+      fixturesResultsCount: fixturesJson.results,
+    };
+
+    const standingsResp = standingsJson.response;
+    const fixturesResp = fixturesJson.response;
 
     const fixtures = fixturesResp || [];
     const liveOnes = fixtures.filter((f) => statusIsLive(f.fixture.status.short));
@@ -89,7 +99,7 @@ export default async (req, context) => {
     const cacheSeconds = liveOnes.length > 0 ? 150 : 1200;
 
     return new Response(
-      JSON.stringify({ standings, results, fixtures: upcoming, updated: new Date().toISOString() }),
+      JSON.stringify({ standings, results, fixtures: upcoming, updated: new Date().toISOString(), debug }),
       {
         headers: {
           "content-type": "application/json",
