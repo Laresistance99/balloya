@@ -42,12 +42,8 @@ export default async (req, context) => {
 
     const eventTargets = [...liveOnes, ...finishedToday].slice(0, 12);
     const scorersById = {};
-    let eventsAttempted = 0;
-    let eventsSucceeded = 0;
-    let firstEventsError = null;
     await Promise.all(
       eventTargets.map(async (f) => {
-        eventsAttempted++;
         try {
           const eventsJson = await apiFetch(`/fixtures/events?fixture=${f.fixture.id}`, apiKey);
           const events = eventsJson.response;
@@ -58,22 +54,11 @@ export default async (req, context) => {
               name: e.player?.name || "Ukjent",
               minute: e.time.elapsed + (e.time.extra ? "+" + e.time.extra : ""),
             }));
-          eventsSucceeded++;
         } catch (e) {
-          if (!firstEventsError) firstEventsError = String(e.message || e);
+          // one fixture's events failing shouldn't break the rest
         }
       })
     );
-
-    const debug = {
-      standingsErrors: standingsJson.errors,
-      standingsResultsCount: standingsJson.results,
-      fixturesErrors: fixturesJson.errors,
-      fixturesResultsCount: fixturesJson.results,
-      eventsAttempted,
-      eventsSucceeded,
-      firstEventsError,
-    };
 
     const standings = (standingsResp?.[0]?.league?.standings?.[0] || []).map((s) => ({
       rank: s.rank,
@@ -108,7 +93,7 @@ export default async (req, context) => {
     const cacheSeconds = liveOnes.length > 0 ? 150 : 1200;
 
     return new Response(
-      JSON.stringify({ standings, results, fixtures: upcoming, updated: new Date().toISOString(), debug }),
+      JSON.stringify({ standings, results, fixtures: upcoming, updated: new Date().toISOString() }),
       {
         headers: {
           "content-type": "application/json",
