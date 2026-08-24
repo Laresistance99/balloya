@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Premier League – på norsk</title>
+<meta name="description" content="Tabell, resultater, kommende kamper og nyheter fra Premier League – samlet på norsk.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EAF0EA;
+    --paper-card:#F8FBF7;
+    --ink:#10241B;
+    --ink-dim:#4B6358;
+    --line: rgba(16,36,27,0.14);
+    --blue:#2748FF;
+    --blue-dim: rgba(39,72,255,0.10);
+    --gold:#E8A83C;
+    --red:#B23A2E;
+    --maxw: 1120px;
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px;}
+  .display{font-family:'Anton', sans-serif; font-weight:400; letter-spacing:0.01em; text-transform:uppercase;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  :focus-visible{outline:3px solid var(--blue); outline-offset:2px;}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    border-bottom:1px solid var(--line);
+    padding:18px 0;
+  }
+  .masthead .wrap{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;}
+  .masthead .brand{display:flex; align-items:baseline; gap:10px;}
+  .masthead .brand-mark{font-size:22px; letter-spacing:0.04em;}
+  .masthead .brand-sub{font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--blue); background:var(--blue-dim); padding:3px 8px; border-radius:4px; letter-spacing:0.06em;}
+  .masthead nav{display:flex; gap:22px; font-size:14px; font-weight:600;}
+  .masthead nav a{text-decoration:none; border-bottom:2px solid transparent; padding-bottom:2px;}
+  .masthead nav a:hover{border-bottom-color:var(--blue);}
+
+  /* ---------- Vidiprinter ticker ---------- */
+  .ticker{
+    background:var(--ink);
+    color:var(--paper);
+    overflow:hidden;
+    position:relative;
+    border-bottom:1px solid var(--line);
+  }
+  .ticker-label{
+    position:absolute; left:0; top:0; bottom:0;
+    display:flex; align-items:center;
+    padding:0 14px;
+    background:var(--gold);
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; font-weight:600; letter-spacing:0.08em;
+    z-index:2;
+  }
+  .ticker-viewport{
+    padding:10px 0;
+    padding-left:120px;
+  }
+  .ticker-track{
+    display:flex;
+    gap:28px;
+    width:max-content;
+    animation: scroll-ticker 38s linear infinite;
+  }
+  .ticker-chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    font-weight:500;
+    white-space:nowrap;
+    display:flex; align-items:center; gap:8px;
+  }
+  .ticker-chip .ft{color:var(--gold); font-size:10px; letter-spacing:0.05em;}
+  @keyframes scroll-ticker{
+    from{ transform: translateX(0); }
+    to{ transform: translateX(-50%); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .ticker-track{ animation:none; }
+    .ticker-viewport{ overflow-x:auto; }
+  }
+
+  /* ---------- Hero ---------- */
+  .hero{padding:56px 0 40px;}
+  .hero h1{
+    font-size:clamp(38px, 7vw, 68px);
+    margin:0 0 14px;
+    line-height:0.98;
+  }
+  .hero p.lede{
+    max-width:560px;
+    font-size:17px;
+    color:var(--ink-dim);
+    margin:0 0 32px;
+  }
+  .spotlight{
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:18px;
+  }
+  .spotlight-tag{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--gold); color:var(--ink);
+    font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600;
+    letter-spacing:0.08em; padding:4px 9px; border-radius:4px;
+    margin-bottom:10px;
+  }
+  .spotlight-teams{font-size:26px; margin:0 0 6px;}
+  .spotlight-meta{color:var(--ink-dim); font-size:14px;}
+  .spotlight-kick{
+    font-family:'Anton', sans-serif;
+    font-size:40px;
+    color:var(--blue);
+    white-space:nowrap;
+  }
+
+  /* ---------- Section shell ---------- */
+  section{padding:52px 0;}
+  section + section{border-top:1px solid var(--line);}
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:26px; flex-wrap:wrap;}
+  .section-head h2{font-size:clamp(26px,4vw,36px); margin:0;}
+  .section-head .note{color:var(--ink-dim); font-size:13px; font-family:'IBM Plex Mono', monospace;}
+
+  /* ---------- Table ---------- */
+  .table-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-card);}
+  table{width:100%; border-collapse:collapse; min-width:560px;}
+  thead th{
+    text-align:left; font-family:'IBM Plex Mono', monospace; font-size:11px;
+    text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);
+    padding:12px 14px; border-bottom:1px solid var(--line);
+  }
+  thead th.num, td.num{text-align:center;}
+  tbody td{padding:11px 14px; border-bottom:1px solid var(--line); font-size:14px;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.pos{font-family:'Anton', sans-serif; font-size:16px; width:32px; position:relative; padding-left:18px;}
+  td.pos::before{content:""; position:absolute; left:0; top:2px; bottom:2px; width:4px; border-radius:2px;}
+  tr.top4 td.pos::before{background:var(--blue);}
+  tr.releg td.pos::before{background:var(--red);}
+  td.team{font-weight:600;}
+  td.pts{font-family:'IBM Plex Mono', monospace; font-weight:600;}
+  .legend{display:flex; gap:18px; margin-top:14px; font-size:12px; color:var(--ink-dim); flex-wrap:wrap;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:10px; height:10px; border-radius:2px; display:inline-block;}
+
+  /* ---------- Cards grid (results / news) ---------- */
+  .grid{display:grid; gap:14px;}
+  .grid.cols-3{grid-template-columns:repeat(3, 1fr);}
+  .grid.cols-2{grid-template-columns:repeat(2, 1fr);}
+  @media (max-width: 860px){
+    .grid.cols-3{grid-template-columns:1fr 1fr;}
+  }
+  @media (max-width: 640px){
+    .grid.cols-3, .grid.cols-2{grid-template-columns:1fr;}
+  }
+
+  .result-card{
+    background:var(--paper-card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 18px;
+  }
+  .result-card .date{font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;}
+  .result-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .result-row .side{font-size:14px; font-weight:600; flex:1;}
+  .result-row .side.away{text-align:right;}
+  .result-row .score{font-family:'Anton', sans-serif; font-size:22px; color:var(--blue); white-space:nowrap; padding:0 8px;}
+
+  .fixture-list{border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-card); overflow:hidden;}
+  .fixture-row{display:flex; align-items:center; gap:16px; padding:14px 18px;}
+  .fixture-row + .fixture-row{border-top:1px solid var(--line);}
+  .fixture-time{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:600;
+    background:var(--blue-dim); color:var(--blue); padding:5px 9px; border-radius:4px;
+    white-space:nowrap; min-width:118px; text-align:center;
+  }
+  .fixture-teams{font-weight:600; font-size:15px;}
+
+  .news-card{
+    background:var(--paper-card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 24px;
+    opacity:0; transform:translateY(10px);
+    transition:opacity .5s ease, transform .5s ease;
+  }
+  .news-card.in-view{opacity:1; transform:translateY(0);}
+  .news-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600; color:var(--blue);
+    text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;
+  }
+  .news-card h3{font-family:'Anton', sans-serif; font-size:22px; margin:0 0 10px; text-transform:none; letter-spacing:0;}
+  .news-card p{margin:0; color:var(--ink-dim); font-size:14.5px;}
+  @media (prefers-reduced-motion: reduce){
+    .news-card{opacity:1; transform:none; transition:none;}
+  }
+
+  footer{padding:36px 0 60px; color:var(--ink-dim); font-size:12.5px;}
+  footer .wrap{display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; border-top:1px solid var(--line); padding-top:22px;}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="brand">
+      <span class="display brand-mark">Premier League</span>
+      <span class="brand-sub">PÅ NORSK</span>
+    </div>
+    <nav>
+      <a href="#tabell">Tabell</a>
+      <a href="#resultater">Resultater</a>
+      <a href="#kommende">Kommende</a>
+      <a href="#nyheter">Nyheter</a>
+      <span id="liveStatus" class="mono" style="font-size:11px;color:var(--ink-dim);"></span>
+    </nav>
+  </div>
+</header>
+
+<div class="ticker" aria-label="Resultater, runde 1">
+  <div class="ticker-label">RUNDE 1</div>
+  <div class="ticker-viewport">
+    <div class="ticker-track" id="tickerTrack">
+      <span class="ticker-chip"><span class="ft">FT</span> ARS 3–0 COV</span>
+      <span class="ticker-chip"><span class="ft">FT</span> HUL 2–0 MUN</span>
+      <span class="ticker-chip"><span class="ft">FT</span> EVE 2–0 CRY</span>
+      <span class="ticker-chip"><span class="ft">FT</span> IPS 2–1 SUN</span>
+      <span class="ticker-chip"><span class="ft">FT</span> NFO 0–1 LEE</span>
+      <span class="ticker-chip"><span class="ft">FT</span> BRE 3–0 TOT</span>
+      <span class="ticker-chip"><span class="ft">FT</span> BRI 4–0 AVL</span>
+      <span class="ticker-chip"><span class="ft">FT</span> MCI 2–1 BOU</span>
+      <span class="ticker-chip"><span class="ft">FT</span> NEW 2–2 LFC</span>
+      <span class="ticker-chip"><span class="ft" style="color:#FF8A65">21:00</span> FUL – CFC</span>
+      <!-- duplicate for seamless loop -->
+      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> ARS 3–0 COV</span>
+      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> HUL 2–0 MUN</span>
+      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> EVE 2–0 CRY</span>
+      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> IPS 2–1 SUN</span>
+      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> NFO 0–1 LEE</span>
+      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> BRE 3–0 TOT</span>
+      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> BRI 4–0 AVL</span>
+      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> MCI 2–1 BOU</span>
+      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> NEW 2–2 LFC</span>
+      <span class="ticker-chip" aria-hidden="true"><span class="ft" style="color:#FF8A65">21:00</span> FUL – CFC</span>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <h1 class="display">Alt om<br>Premier League</h1>
+      <p class="lede">Tabell, resultater, kommende kamper og nyheter fra alle 20 klubber – samlet på norsk gjennom hele sesongen 2026/27.</p>
+
+      <div class="spotlight">
+        <div>
+          <div class="spotlight-tag">I KVELD</div>
+          <div class="spotlight-teams display">Fulham – Chelsea</div>
+          <div class="spotlight-meta">Craven Cottage · Runde 1 avsluttes</div>
+        </div>
+        <div class="spotlight-kick mono">21:00</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tabell">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="display">Tabellen</h2>
+        <span class="note">Etter runde 1 · oppdateres etter Fulham – Chelsea i kveld</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Lag</th>
+              <th class="num">K</th><th class="num">S</th><th class="num">U</th><th class="num">T</th><th class="num">Poeng</th>
+            </tr>
+          </thead>
+          <tbody id="standingsBody">
+            <tr class="top4"><td class="pos">1</td><td class="team">Brighton &amp; Hove Albion</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
+            <tr class="top4"><td class="pos">2</td><td class="team">Arsenal</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
+            <tr class="top4"><td class="pos">3</td><td class="team">Brentford</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
+            <tr class="top4"><td class="pos">4</td><td class="team">Everton</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
+            <tr><td class="pos">5</td><td class="team">Hull City</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
+            <tr><td class="pos">6</td><td class="team">Ipswich Town</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
+            <tr><td class="pos">7</td><td class="team">Manchester City</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
+            <tr><td class="pos">8</td><td class="team">Leeds United</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
+            <tr><td class="pos">9</td><td class="team">Liverpool</td><td class="num">1</td><td class="num">0</td><td class="num">1</td><td class="num">0</td><td class="num pts">1</td></tr>
+            <tr><td class="pos">10</td><td class="team">Newcastle United</td><td class="num">1</td><td class="num">0</td><td class="num">1</td><td class="num">0</td><td class="num pts">1</td></tr>
+            <tr><td class="pos">11</td><td class="team">Chelsea</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num pts">0</td></tr>
+            <tr><td class="pos">12</td><td class="team">Fulham</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num pts">0</td></tr>
+            <tr><td class="pos">13</td><td class="team">AFC Bournemouth</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
+            <tr><td class="pos">14</td><td class="team">Sunderland</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
+            <tr><td class="pos">15</td><td class="team">Nottingham Forest</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
+            <tr><td class="pos">16</td><td class="team">Crystal Palace</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
+            <tr><td class="pos">17</td><td class="team">Manchester United</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
+            <tr class="releg"><td class="pos">18</td><td class="team">Coventry City</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
+            <tr class="releg"><td class="pos">19</td><td class="team">Tottenham Hotspur</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
+            <tr class="releg"><td class="pos">20</td><td class="team">Aston Villa</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--blue)"></i> Mesterligaplass</span>
+        <span><i style="background:var(--red)"></i> Nedrykksplass</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="resultater">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="display">Resultater</h2>
+        <span class="note" id="resultsNote">Runde 1 · 21.–23. august</span>
+      </div>
+      <div class="grid cols-3" id="resultsGrid">
+        <div class="result-card"><div class="date">Fre 21. aug</div>
+          <div class="result-row"><span class="side">Arsenal</span><span class="score mono">3–0</span><span class="side away">Coventry City</span></div></div>
+        <div class="result-card"><div class="date">Lør 22. aug</div>
+          <div class="result-row"><span class="side">Hull City</span><span class="score mono">2–0</span><span class="side away">Man United</span></div></div>
+        <div class="result-card"><div class="date">Lør 22. aug</div>
+          <div class="result-row"><span class="side">Everton</span><span class="score mono">2–0</span><span class="side away">Crystal Palace</span></div></div>
+        <div class="result-card"><div class="date">Lør 22. aug</div>
+          <div class="result-row"><span class="side">Ipswich Town</span><span class="score mono">2–1</span><span class="side away">Sunderland</span></div></div>
+        <div class="result-card"><div class="date">Lør 22. aug</div>
+          <div class="result-row"><span class="side">Nottm Forest</span><span class="score mono">0–1</span><span class="side away">Leeds United</span></div></div>
+        <div class="result-card"><div class="date">Lør 22. aug</div>
+          <div class="result-row"><span class="side">Brentford</span><span class="score mono">3–0</span><span class="side away">Tottenham</span></div></div>
+        <div class="result-card"><div class="date">Søn 23. aug</div>
+          <div class="result-row"><span class="side">Brighton</span><span class="score mono">4–0</span><span class="side away">Aston Villa</span></div></div>
+        <div class="result-card"><div class="date">Søn 23. aug</div>
+          <div class="result-row"><span class="side">Man City</span><span class="score mono">2–1</span><span class="side away">Bournemouth</span></div></div>
+        <div class="result-card"><div class="date">Søn 23. aug</div>
+          <div class="result-row"><span class="side">Newcastle</span><span class="score mono">2–2</span><span class="side away">Liverpool</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="kommende">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="display">Kommende kamper</h2>
+        <span class="note">Runde 2 · 28.–30. august</span>
+      </div>
+      <div class="fixture-list" id="fixturesList">
+        <div class="fixture-row"><span class="fixture-time">Fre 28. aug 21:00</span><span class="fixture-teams">Crystal Palace – Manchester City</span></div>
+        <div class="fixture-row"><span class="fixture-time">Lør 29. aug 13:30</span><span class="fixture-teams">Liverpool – Nottingham Forest</span></div>
+        <div class="fixture-row"><span class="fixture-time">Lør 29. aug 16:00</span><span class="fixture-teams">AFC Bournemouth – Everton</span></div>
+        <div class="fixture-row"><span class="fixture-time">Lør 29. aug 16:00</span><span class="fixture-teams">Coventry City – Hull City</span></div>
+        <div class="fixture-row"><span class="fixture-time">Lør 29. aug 18:30</span><span class="fixture-teams">Tottenham Hotspur – Newcastle United</span></div>
+        <div class="fixture-row"><span class="fixture-time">Søn 30. aug 15:00</span><span class="fixture-teams">Chelsea – Brighton &amp; Hove Albion</span></div>
+        <div class="fixture-row"><span class="fixture-time">Søn 30. aug 15:00</span><span class="fixture-teams">Leeds United – Brentford</span></div>
+        <div class="fixture-row"><span class="fixture-time">Søn 30. aug 15:00</span><span class="fixture-teams">Sunderland – Fulham</span></div>
+        <div class="fixture-row"><span class="fixture-time">Søn 30. aug 17:30</span><span class="fixture-teams">Manchester United – Ipswich Town</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="nyheter">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="display">Nyheter</h2>
+        <span class="note">Fra alle 20 klubber</span>
+      </div>
+      <div class="grid cols-2">
+
+        <div class="news-card"><div class="news-tag">Arsenal · Coventry City</div>
+          <h3>Mesterne startet solid</h3>
+          <p>Arsenal innledet tittelforsvaret med en overbevisende 3–0-seier over nyopprykkede Coventry City, tilbake i toppdivisjonen for første gang på 25 år under Frank Lampard. Til tross for den suverene starten er det fortsatt litt usikkerhet rundt en skade i Arsenal-troppen.</p></div>
+
+        <div class="news-card"><div class="news-tag">Hull City · Manchester United</div>
+          <h3>Drømmestart for Hull</h3>
+          <p>Hull City feiret gjenkomsten til Premier League med en 2–0-seier over Manchester United. United-manager Michael Carrick beskrev tapet som svært skuffende og pekte på at laget må reise seg raskt.</p></div>
+
+        <div class="news-card"><div class="news-tag">Brentford · Tottenham</div>
+          <h3>Sangaré imponerte fra start</h3>
+          <p>Tottenham reiste hjem med et 0–3-tap fra Brentford og er fortsatt preget av skadeproblemer i troppen. På den andre siden imponerte Brentfords rekordsignering Mamadou Sangaré, involvert i det første målet på sin debut.</p></div>
+
+        <div class="news-card"><div class="news-tag">Newcastle · Liverpool</div>
+          <h3>Ny æra uten Salah</h3>
+          <p>Liverpool måtte klare seg uten Mohamed Salah, Andy Robertson og Ibrahima Konaté, som alle forlot klubben i sommer, og hentet et 2–2-poeng hos Newcastle. Også Newcastle har solgt flere sentrale spillere denne sommeren, men holdt unna mot serieforsvarerne.</p></div>
+
+        <div class="news-card"><div class="news-tag">Manchester City · Bournemouth</div>
+          <h3>City slet, men vant</h3>
+          <p>Manchester City vant 2–1 over Bournemouth, som er inne i en ny æra under Marco Rose etter Andoni Iraolas exit. Bournemouth har historisk slitt på Etihad Stadium, og tapte nok en gang på bortebane mot City.</p></div>
+
+        <div class="news-card"><div class="news-tag">Ipswich Town · Sunderland</div>
+          <h3>Angulo med kamperedning</h3>
+          <p>Ipswich Town slo Sunderland 2–1 i en duell mellom to nyopprykkede lag, avgjort av et spektakulært frispark fra Nilson Angulo. Sunderland, under ny manager Gary O'Neil etter en sterk avslutning på forrige sesong, måtte se seg slått.</p></div>
+
+        <div class="news-card"><div class="news-tag">Everton · Crystal Palace</div>
+          <h3>Ny bane, ny sesong</h3>
+          <p>Everton åpnet sesongen med en 2–0-seier over Crystal Palace på Hill Dickinson Stadium. Palace, nå under ny manager etter Oliver Glasners avgang, jakter fortsatt sin første seier i den nye æraen.</p></div>
+
+        <div class="news-card"><div class="news-tag">Brighton · Aston Villa</div>
+          <h3>Målfest på Amex</h3>
+          <p>Brighton &amp; Hove Albion knuste Aston Villa 4–0 hjemme – et av helgens klareste resultater og en sterk åpning for sørkystklubben.</p></div>
+
+        <div class="news-card"><div class="news-tag">Leeds United · Nottingham Forest</div>
+          <h3>Leeds med borteseier</h3>
+          <p>Leeds United tok med seg alle tre poeng fra Nottingham Forest etter en 1–0-seier, en solid åpning for opprykkslaget denne sesongen.</p></div>
+
+        <div class="news-card"><div class="news-tag">Fulham · Chelsea</div>
+          <h3>Arbeloas første hjemmekamp</h3>
+          <p>Runde 1 avsluttes mandag kveld når tidligere Real Madrid-back Álvaro Arbeloa leder Fulham for første gang på hjemmebane, mot Chelsea på Craven Cottage.</p></div>
+
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Uoffisiell fansside – ikke tilknyttet Premier League. Data er et øyeblikksbilde fra 24. august 2026.</span>
+    <span>Laget for norske Premier League-fans.</span>
+  </div>
+</footer>
+
+<script>
+  // ---------- Live data rendering ----------
+  const TEAM_ABBR = {}; // fills in as data arrives, used only for the ticker
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    const days = ['søn','man','tir','ons','tor','fre','lør'];
+    return `${days[d.getDay()]}. ${d.getDate()}. ${d.toLocaleString('no-NO',{month:'short'})}`;
+  }
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+  }
+  function scorerLine(scorers, side) {
+    const list = (scorers || []).filter(s => s.team === side);
+    if (!list.length) return '';
+    return list.map(s => `${s.name}${s.minute ? ' ' + s.minute + "'" : ''}`).join(', ');
+  }
+
+  function renderStandings(standings) {
+    const body = document.getElementById('standingsBody');
+    if (!body || !standings || !standings.length) return;
+    body.innerHTML = standings.map((s, i) => {
+      const cls = i < 4 ? 'top4' : (i >= standings.length - 3 ? 'releg' : '');
+      return `<tr class="${cls}"><td class="pos">${s.rank}</td><td class="team">${s.team}</td>` +
+        `<td class="num">${s.played}</td><td class="num">${s.win}</td>` +
+        `<td class="num">${s.draw}</td><td class="num">${s.lose}</td>` +
+        `<td class="num pts">${s.points}</td></tr>`;
+    }).join('');
+  }
+
+  function renderResults(results) {
+    const grid = document.getElementById('resultsGrid');
+    if (!grid || !results) return;
+    grid.innerHTML = results.slice(0, 12).map(r => {
+      const live = r.status !== 'FT';
+      const homeScorers = scorerLine(r.scorers, 'home');
+      const awayScorers = scorerLine(r.scorers, 'away');
+      return `<div class="result-card">
+        <div class="date">${fmtDate(r.date)}${live ? ' · <span style="color:var(--gold)">LIVE</span>' : ''}${r.manual ? ' · manuelt' : ''}</div>
+        <div class="result-row"><span class="side">${r.home}</span><span class="score mono">${r.homeGoals ?? '–'}–${r.awayGoals ?? '–'}</span><span class="side away">${r.away}</span></div>
+        ${(homeScorers || awayScorers) ? `<div class="ts" style="margin-top:8px;display:flex;justify-content:space-between;gap:8px;"><span>${homeScorers}</span><span style="text-align:right">${awayScorers}</span></div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function renderFixtures(fixtures) {
+    const list = document.getElementById('fixturesList');
+    if (!list || !fixtures) return;
+    list.innerHTML = fixtures.map(f =>
+      `<div class="fixture-row"><span class="fixture-time">${fmtDate(f.date)} ${fmtTime(f.date)}</span><span class="fixture-teams">${f.home} – ${f.away}</span></div>`
+    ).join('');
+  }
+
+  function renderTicker(results) {
+    const track = document.getElementById('tickerTrack');
+    if (!track || !results || !results.length) return;
+    const chips = results.slice(0, 10).map(r => {
+      const tag = r.status === 'FT' ? '<span class="ft">FT</span>' : '<span class="ft" style="color:var(--gold)">LIVE</span>';
+      return `<span class="ticker-chip">${tag} ${r.home.slice(0,3).toUpperCase()} ${r.homeGoals}–${r.awayGoals} ${r.away.slice(0,3).toUpperCase()}</span>`;
+    });
+    track.innerHTML = chips.concat(chips.map(c => c.replace('<span class="ticker-chip">', '<span class="ticker-chip" aria-hidden="true">'))).join('');
+  }
+
+  async function refreshLiveData() {
+    const statusEl = document.getElementById('liveStatus');
+    try {
+      const res = await fetch('/api/live-data');
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      renderStandings(data.standings);
+      renderResults(data.results);
+      renderFixtures(data.fixtures);
+      renderTicker(data.results);
+      if (statusEl) statusEl.textContent = 'oppdatert ' + fmtTime(data.updated || new Date().toISOString());
+    } catch (e) {
+      if (statusEl) statusEl.textContent = 'viser siste lagrede data';
+    }
+  }
+
+  refreshLiveData();
+  setInterval(refreshLiveData, 60 * 1000); // polls our own cached endpoint, not the football API directly
+
+  // Fade in news cards as they enter view
+  if ('IntersectionObserver' in window) {
+    const cards = document.querySelectorAll('.news-card');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in-view'); io.unobserve(e.target); } });
+    }, { threshold: 0.15 });
+    cards.forEach(c => io.observe(c));
+  } else {
+    document.querySelectorAll('.news-card').forEach(c => c.classList.add('in-view'));
+  }
+</script>
+
+</body>
+</html>
