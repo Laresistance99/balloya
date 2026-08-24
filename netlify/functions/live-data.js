@@ -33,13 +33,6 @@ export default async (req, context) => {
       apiFetch(`/fixtures?league=${LEAGUE_ID}&season=${SEASON}&from=${from}&to=${to}`, apiKey),
     ]);
 
-    const debug = {
-      standingsErrors: standingsJson.errors,
-      standingsResultsCount: standingsJson.results,
-      fixturesErrors: fixturesJson.errors,
-      fixturesResultsCount: fixturesJson.results,
-    };
-
     const standingsResp = standingsJson.response;
     const fixturesResp = fixturesJson.response;
 
@@ -49,10 +42,15 @@ export default async (req, context) => {
 
     const eventTargets = [...liveOnes, ...finishedToday].slice(0, 12);
     const scorersById = {};
+    let eventsAttempted = 0;
+    let eventsSucceeded = 0;
+    let firstEventsError = null;
     await Promise.all(
       eventTargets.map(async (f) => {
+        eventsAttempted++;
         try {
-          const events = await apiFetch(`/fixtures/events?fixture=${f.fixture.id}`, apiKey);
+          const eventsJson = await apiFetch(`/fixtures/events?fixture=${f.fixture.id}`, apiKey);
+          const events = eventsJson.response;
           scorersById[f.fixture.id] = (events || [])
             .filter((e) => e.type === "Goal" && e.detail !== "Missed Penalty")
             .map((e) => ({
@@ -60,11 +58,22 @@ export default async (req, context) => {
               name: e.player?.name || "Ukjent",
               minute: e.time.elapsed + (e.time.extra ? "+" + e.time.extra : ""),
             }));
+          eventsSucceeded++;
         } catch (e) {
-          // one fixture failing shouldn't break the rest
+          if (!firstEventsError) firstEventsError = String(e.message || e);
         }
       })
     );
+
+    const debug = {
+      standingsErrors: standingsJson.errors,
+      standingsResultsCount: standingsJson.results,
+      fixturesErrors: fixturesJson.errors,
+      fixturesResultsCount: fixturesJson.results,
+      eventsAttempted,
+      eventsSucceeded,
+      firstEventsError,
+    };
 
     const standings = (standingsResp?.[0]?.league?.standings?.[0] || []).map((s) => ({
       rank: s.rank,
