@@ -47,7 +47,12 @@
   .masthead .brand{display:flex; align-items:baseline; gap:10px;}
   .masthead .brand-mark{font-size:22px; letter-spacing:0.04em;}
   .masthead .brand-sub{font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--blue); background:var(--blue-dim); padding:3px 8px; border-radius:4px; letter-spacing:0.06em;}
-  .masthead nav{display:flex; gap:22px; font-size:14px; font-weight:600;}
+  .masthead nav{display:flex; gap:16px; font-size:14px; font-weight:600; flex-wrap:wrap; row-gap:6px;}
+  @media (max-width: 480px){
+    .masthead nav{gap:10px; font-size:13px;}
+    .masthead nav a{white-space:nowrap;}
+    #liveStatus{width:100%; order:99;}
+  }
   .masthead nav a{text-decoration:none; border-bottom:2px solid transparent; padding-bottom:2px;}
   .masthead nav a:hover{border-bottom-color:var(--blue);}
 
@@ -229,6 +234,7 @@
       <a href="#resultater">Resultater</a>
       <a href="#kommende">Kommende</a>
       <a href="#nyheter">Nyheter</a>
+      <a href="#europa">Europa</a>
       <span id="liveStatus" class="mono" style="font-size:11px;color:var(--ink-dim);"></span>
     </nav>
   </div>
@@ -425,6 +431,17 @@
       </div>
     </div>
   </section>
+  <section id="europa">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="display">Engelske lag i Europa</h2>
+        <span class="note">Champions League · Europa League · Konferanseligaen</span>
+      </div>
+      <div id="europaStandings" class="grid cols-3" style="margin-bottom:20px;"></div>
+      <div id="europaResults" class="grid cols-3" style="margin-bottom:20px;"></div>
+      <div class="fixture-list" id="europaFixtures"></div>
+    </div>
+  </section>
 </main>
 
 <footer>
@@ -498,6 +515,42 @@
     track.innerHTML = chips.concat(chips.map(c => c.replace('<span class="ticker-chip">', '<span class="ticker-chip" aria-hidden="true">'))).join('');
   }
 
+  function renderEuropaStandings(rows) {
+    const el = document.getElementById('europaStandings');
+    if (!el) return;
+    if (!rows || !rows.length) { el.innerHTML = '<p class="ts">Ingen engelske lag i europeisk aksjon for øyeblikket.</p>'; return; }
+    el.innerHTML = rows.map(r => `<div class="result-card">
+      <div class="date">${r.competitionName}</div>
+      <div class="result-row"><span class="side">${r.team}</span><span class="score mono">#${r.rank}</span></div>
+      <div class="ts" style="margin-top:6px;">${r.played} kamper spilt · ${r.points} poeng</div>
+    </div>`).join('');
+  }
+
+  function renderEuropaResults(results) {
+    const el = document.getElementById('europaResults');
+    if (!el) return;
+    if (!results || !results.length) { el.innerHTML = ''; return; }
+    el.innerHTML = results.slice(0, 12).map(r => {
+      const live = r.status !== 'FT';
+      const homeScorers = scorerLine(r.scorers, 'home');
+      const awayScorers = scorerLine(r.scorers, 'away');
+      return `<div class="result-card">
+        <div class="date">${r.competitionName}${live ? ' · <span style="color:var(--gold)">LIVE</span>' : ''}</div>
+        <div class="result-row"><span class="side">${r.home}</span><span class="score mono">${r.homeGoals ?? '–'}–${r.awayGoals ?? '–'}</span><span class="side away">${r.away}</span></div>
+        ${(homeScorers || awayScorers) ? `<div class="ts" style="margin-top:8px;display:flex;justify-content:space-between;gap:8px;"><span>${homeScorers}</span><span style="text-align:right">${awayScorers}</span></div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function renderEuropaFixtures(fixtures) {
+    const el = document.getElementById('europaFixtures');
+    if (!el) return;
+    el.innerHTML = (fixtures || []).map(f => `<div class="fixture-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <span class="ts" style="text-transform:uppercase;letter-spacing:0.05em;">${f.competitionName} · ${fmtDate(f.date)} ${fmtTime(f.date)}</span>
+      <span class="fixture-teams">${f.home} – ${f.away}</span>
+    </div>`).join('');
+  }
+
   async function refreshLiveData() {
     const statusEl = document.getElementById('liveStatus');
     try {
@@ -508,6 +561,11 @@
       renderResults(data.results);
       renderFixtures(data.fixtures);
       renderTicker(data.results);
+      if (data.europa) {
+        renderEuropaStandings(data.europa.standings);
+        renderEuropaResults(data.europa.results);
+        renderEuropaFixtures(data.europa.fixtures);
+      }
       if (statusEl) statusEl.textContent = 'oppdatert ' + fmtTime(data.updated || new Date().toISOString());
     } catch (e) {
       if (statusEl) statusEl.textContent = 'viser siste lagrede data';
