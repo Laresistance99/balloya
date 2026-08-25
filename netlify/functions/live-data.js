@@ -19,28 +19,31 @@ async function apiFetch(path, key) {
   return json;
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchScorers(fixtureList, apiKey) {
   const liveOnes = fixtureList.filter((f) => statusIsLive(f.fixture.status.short));
   const finished = fixtureList.filter((f) => f.fixture.status.short === "FT");
-  const targets = [...liveOnes, ...finished].slice(0, 16);
+  const targets = [...liveOnes, ...finished].slice(0, 10);
   const scorersById = {};
-  await Promise.all(
-    targets.map(async (f) => {
-      try {
-        const eventsJson = await apiFetch(`/fixtures/events?fixture=${f.fixture.id}`, apiKey);
-        const events = eventsJson.response;
-        scorersById[f.fixture.id] = (events || [])
-          .filter((e) => e.type === "Goal" && e.detail !== "Missed Penalty")
-          .map((e) => ({
-            team: e.team.id === f.teams.home.id ? "home" : "away",
-            name: e.player?.name || "Ukjent",
-            minute: e.time.elapsed + (e.time.extra ? "+" + e.time.extra : ""),
-          }));
-      } catch (e) {
-        // one fixture's events failing shouldn't break the rest
-      }
-    })
-  );
+  for (const f of targets) {
+    try {
+      const eventsJson = await apiFetch(`/fixtures/events?fixture=${f.fixture.id}`, apiKey);
+      const events = eventsJson.response;
+      scorersById[f.fixture.id] = (events || [])
+        .filter((e) => e.type === "Goal" && e.detail !== "Missed Penalty")
+        .map((e) => ({
+          team: e.team.id === f.teams.home.id ? "home" : "away",
+          name: e.player?.name || "Ukjent",
+          minute: e.time.elapsed + (e.time.extra ? "+" + e.time.extra : ""),
+        }));
+    } catch (e) {
+      // one fixture's events failing shouldn't break the rest
+    }
+    await sleep(220); // stay comfortably under 5 requests/second
+  }
   return scorersById;
 }
 
@@ -79,68 +82,66 @@ export default async (req, context) => {
     const europaStandings = [];
     const europaDebug = [];
 
-    await Promise.all(
-      EURO_COMPETITIONS.map(async (comp) => {
-        try {
-          const [euroStandingsJson, euroFixturesJson] = await Promise.all([
-            apiFetch(`/standings?league=${comp.id}&season=${SEASON}`, apiKey),
-            apiFetch(`/fixtures?league=${comp.id}&season=${SEASON}&from=${from}&to=${to}`, apiKey),
-          ]);
+    for (const comp of EURO_COMPETITIONS) {
+      try {
+        const euroStandingsJson = await apiFetch(`/standings?league=${comp.id}&season=${SEASON}`, apiKey);
+        await sleep(220);
+        const euroFixturesJson = await apiFetch(`/fixtures?league=${comp.id}&season=${SEASON}&from=${from}&to=${to}`, apiKey);
+        await sleep(220);
 
-          const euroFixturesAll = euroFixturesJson.response || [];
-          const englishFixtures = euroFixturesAll.filter(
-            (f) => englishClubs.has(f.teams.home.name) || englishClubs.has(f.teams.away.name)
-          );
+        const euroFixturesAll = euroFixturesJson.response || [];
+        const englishFixtures = euroFixturesAll.filter(
+          (f) => englishClubs.has(f.teams.home.name) || englishClubs.has(f.teams.away.name)
+        );
 
-          const sampleNames = [
-            ...new Set(euroFixturesAll.flatMap((f) => [f.teams.home.name, f.teams.away.name])),
-          ].slice(0, 20);
-          europaDebug.push({
+        const sampleNames = [
+          ...new Set(euroFixturesAll.flatMap((f) => [f.teams.home.name, f.teams.away.name])),
+        ].slice(0, 20);
+        europaDebug.push({
+          competition: comp.code,
+          totalFixturesInWindow: euroFixturesAll.length,
+          matchedEnglishFixtures: englishFixtures.length,
+          fixturesError: euroFixturesJson.errors,
+          sampleTeamNames: sampleNames,
+        });
+        const euroScorers = await fetchScorers(englishFixtures, apiKey);
+
+        for (const f of englishFixtures) {
+          const entry = {
+            id: f.fixture.id,
+            date: f.fixture.date,
+            status: f.fixture.status.short,
+            home: f.teams.home.name,
+            away: f.teams.away.name,
+            homeGoals: f.goals.home,
+            awayGoals: f.goals.away,
+            scorers: euroScorers[f.fixture.id] || [],
             competition: comp.code,
-            totalFixturesInWindow: euroFixturesAll.length,
-            matchedEnglishFixtures: englishFixtures.length,
-            fixturesError: euroFixturesJson.errors,
-            sampleTeamNames: sampleNames,
-          });
-          const euroScorers = await fetchScorers(englishFixtures, apiKey);
+            competitionName: comp.name,
+          };
+          if (entry.status === "FT" || statusIsLive(entry.status)) europaResults.push(entry);
+          else if (entry.status === "NS") europaFixtures.push(entry);
+        }
 
-          for (const f of englishFixtures) {
-            const entry = {
-              id: f.fixture.id,
-              date: f.fixture.date,
-              status: f.fixture.status.short,
-              home: f.teams.home.name,
-              away: f.teams.away.name,
-              homeGoals: f.goals.home,
-              awayGoals: f.goals.away,
-              scorers: euroScorers[f.fixture.id] || [],
-              competition: comp.code,
-              competitionName: comp.name,
-            };
-            if (entry.status === "FT" || statusIsLive(entry.status)) europaResults.push(entry);
-            else if (entry.status === "NS") europaFixtures.push(entry);
-          }
-
-          const standingsRows = euroStandingsJson.response?.[0]?.league?.standings || [];
-          for (const group of standingsRows) {
-            for (const s of group) {
-              if (englishClubs.has(s.team.name)) {
-                europaStandings.push({
-                  team: s.team.name,
-                  rank: s.rank,
-                  played: s.all.played,
-                  points: s.points,
-                  competition: comp.code,
-                  competitionName: comp.name,
-                });
-              }
+        const standingsRows = euroStandingsJson.response?.[0]?.league?.standings || [];
+        for (const group of standingsRows) {
+          for (const s of group) {
+            if (englishClubs.has(s.team.name)) {
+              europaStandings.push({
+                team: s.team.name,
+                rank: s.rank,
+                played: s.all.played,
+                points: s.points,
+                competition: comp.code,
+                competitionName: comp.name,
+              });
             }
           }
-        } catch (e) {
-          europaDebug.push({ competition: comp.code, error: String(e.message || e) });
         }
-      })
-    );
+      } catch (e) {
+        europaDebug.push({ competition: comp.code, error: String(e.message || e) });
+      }
+    }
 
     europaResults.sort((a, b) => new Date(b.date) - new Date(a.date));
     europaFixtures.sort((a, b) => new Date(a.date) - new Date(b.date));
