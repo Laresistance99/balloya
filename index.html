@@ -230,7 +230,7 @@
 
   /* ---------- Table ---------- */
   .table-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-card);}
-  table{width:100%; border-collapse:collapse; min-width:560px;}
+  table{width:100%; border-collapse:collapse; min-width:660px;}
   thead th{
     text-align:left; font-family:'IBM Plex Mono', monospace; font-size:11px;
     text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);
@@ -375,7 +375,8 @@
           <thead>
             <tr>
               <th>#</th><th>Lag</th>
-              <th class="num">K</th><th class="num">S</th><th class="num">U</th><th class="num">T</th><th class="num">Poeng</th>
+              <th class="num">K</th><th class="num">S</th><th class="num">U</th><th class="num">T</th>
+              <th class="num">Mål</th><th class="num">+/-</th><th class="num">Poeng</th>
             </tr>
           </thead>
           <tbody id="standingsBody">
@@ -519,9 +520,15 @@
     if (!body || !standings || !standings.length) return;
     body.innerHTML = standings.map((s, i) => {
       const cls = i < 4 ? 'top4' : (i >= standings.length - 3 ? 'releg' : '');
+      const gf = s.goalsFor ?? 0, ga = s.goalsAgainst ?? 0;
+      const gd = s.goalDiff ?? (gf - ga);
+      const gdTxt = gd > 0 ? '+' + gd : String(gd);
+      const gdColor = gd > 0 ? 'var(--blue)' : (gd < 0 ? 'var(--red)' : 'var(--ink-dim)');
       return `<tr class="${cls}"><td class="pos">${s.rank}</td><td class="team">${s.team}</td>` +
         `<td class="num">${s.played}</td><td class="num">${s.win}</td>` +
         `<td class="num">${s.draw}</td><td class="num">${s.lose}</td>` +
+        `<td class="num mono">${gf}–${ga}</td>` +
+        `<td class="num mono" style="color:${gdColor}">${gdTxt}</td>` +
         `<td class="num pts">${s.points}</td></tr>`;
     }).join('');
   }
