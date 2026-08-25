@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="no">
 <head>
@@ -205,10 +204,21 @@
   .filter-pill:hover{border-color:var(--blue); color:var(--blue);}
   .filter-pill.active{background:var(--blue); color:#fff; border-color:var(--blue);}
   .filter-pill .count{opacity:0.65; margin-left:5px; font-family:'IBM Plex Mono',monospace; font-size:11px;}
+  .sub-bar{margin-top:-14px; margin-bottom:22px;}
+  .sub-bar .filter-pill{font-size:12.5px; padding:6px 13px; background:transparent;}
+  .sub-bar .filter-pill.active{background:var(--ink); border-color:var(--ink); color:var(--paper);}
   .sub-head{
     font-size:15px; letter-spacing:0.06em; color:var(--ink-dim);
     margin:0 0 12px; text-transform:uppercase;
   }
+  .more-btn{
+    display:block; width:100%; margin:0 0 26px;
+    padding:11px 16px; border:1px solid var(--line); border-radius:8px;
+    background:var(--paper-card); color:var(--blue);
+    font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; font-weight:600;
+    cursor:pointer; transition:border-color .15s ease;
+  }
+  .more-btn:hover{border-color:var(--blue);}
   .empty-note{color:var(--ink-dim); font-size:14px; padding:14px 2px;}
 
   /* ---------- Section shell ---------- */
@@ -358,7 +368,7 @@
     <div class="wrap">
       <div class="section-head">
         <h2 class="display">Tabellen</h2>
-        <span class="note">Etter runde 1 · oppdateres etter Fulham – Chelsea i kveld</span>
+        <span class="note" id="tabellNote"></span>
       </div>
       <div class="table-scroll">
         <table>
@@ -413,6 +423,8 @@
         <button class="filter-pill" role="tab" aria-selected="false" data-filter="europa">Europa</button>
       </div>
 
+      <div class="filter-bar sub-bar" id="subBar" style="display:none;" role="tablist" aria-label="Velg turnering"></div>
+
       <div id="europaStandingsWrap" style="display:none;">
         <h3 class="sub-head display">Stilling i Europa</h3>
         <div id="europaStandings" class="grid cols-3" style="margin-bottom:26px;"></div>
@@ -420,6 +432,8 @@
 
       <h3 class="sub-head display">Resultater</h3>
       <div id="resultsGrid" class="grid cols-3" style="margin-bottom:26px;"></div>
+
+      <button id="moreResults" class="more-btn" style="display:none;">Vis flere resultater</button>
 
       <h3 class="sub-head display">Kommende kamper</h3>
       <div class="fixture-list" id="fixturesList"></div>
@@ -523,18 +537,18 @@
     return `<div class="scorer-pop">${mk('home', r.home)}${mk('away', r.away)}</div>`;
   }
 
-  function renderResults(results) {
+  function renderResults(results, limit) {
     const grid = document.getElementById('resultsGrid');
     if (!grid) return;
     if (!results || !results.length) {
       grid.innerHTML = '<div class="empty-note">Ingen resultater i denne kategorien enn\u00e5.</div>';
       return;
     }
-    grid.innerHTML = results.slice(0, 15).map(r => {
+    grid.innerHTML = results.slice(0, limit || 15).map(r => {
       const live = r.status !== 'FT';
       const hasScorers = (r.scorers || []).length > 0;
       return `<div class="result-card${hasScorers ? ' has-scorers' : ''}"${hasScorers ? ' tabindex="0"' : ''}>
-        <div class="date">${fmtDate(r.date)} · ${r.competitionName || 'Premier League'}${live ? ' · <span style="color:var(--gold)">LIVE</span>' : ''}${r.manual ? ' · manuelt' : ''}</div>
+        <div class="date">${fmtDate(r.date)} · ${r.competitionName || 'Premier League'}${r.round ? ' · ' + r.round : ''}${live ? ' · <span style="color:var(--gold)">LIVE</span>' : ''}${r.manual ? ' · manuelt' : ''}</div>
         <div class="result-row"><span class="side">${r.home}</span><span class="score mono">${r.homeGoals ?? '–'}–${r.awayGoals ?? '–'}</span><span class="side away">${r.away}</span></div>
         ${hasScorers ? '<div class="tap-hint">Trykk for målscorere</div>' + scorerPopHtml(r) : ''}
       </div>`;
@@ -572,7 +586,7 @@
       `<div class="fixture-row" style="flex-wrap:wrap;">
         <span class="fixture-time">${fmtDate(f.date)} ${fmtTime(f.date)}</span>
         <span class="fixture-teams">${f.home} \u2013 ${f.away}</span>
-        <span class="ts" style="margin-left:auto;">${f.competitionName || 'Premier League'}</span>
+        <span class="ts" style="margin-left:auto;">${f.competitionName || 'Premier League'}${f.round ? ' · ' + f.round : ''}</span>
       </div>`
     ).join('');
   }
@@ -673,8 +687,7 @@
     if (!teamsEl) return;
 
     // A match in progress always wins the spotlight; otherwise the soonest kickoff.
-    const allResults = [...(data.results || []), ...((data.europa && data.europa.results) || [])];
-    const liveNow = allResults.find(r => r.status !== 'FT');
+    const liveNow = (data.results || []).find(r => r.status !== 'FT');
 
     if (liveNow) {
       tagEl.textContent = 'PÅGÅR NÅ';
@@ -684,11 +697,9 @@
       return;
     }
 
-    const allUpcoming = [
-      ...(data.fixtures || []).map(f => ({ ...f, competitionName: 'Premier League' })),
-      ...((data.europa && data.europa.fixtures) || []),
-    ].filter(f => new Date(f.date) > new Date())
-     .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const allUpcoming = (data.fixtures || [])
+      .filter(f => new Date(f.date) > new Date())
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const next = allUpcoming[0];
     if (!next) {
@@ -715,67 +726,146 @@
 
   let latestData = null;
   let activeFilter = 'alle';
+  let activeSub = 'alle';
+  let resultLimit = 15;
+
+  const GROUP_LABELS = {
+    alle: 'Alle turneringer',
+    liga: 'Premier League',
+    cup: 'FA-cupen og Ligacupen',
+    europa: 'Europeiske turneringer',
+  };
 
   function matchesFilter(item) {
-    if (activeFilter === 'alle') return true;
-    return (item.group || 'liga') === activeFilter;
+    const g = item.group || 'liga';
+    if (activeFilter !== 'alle' && g !== activeFilter) return false;
+    if (activeSub !== 'alle' && item.competition !== activeSub) return false;
+    return true;
+  }
+
+  function renderSubBar() {
+    const bar = document.getElementById('subBar');
+    if (!bar || !latestData) return;
+    const comps = (latestData.competitions || []).filter(c => c.group === activeFilter);
+
+    // Only worth showing when the group actually holds more than one competition.
+    if (activeFilter === 'alle' || comps.length < 2) {
+      bar.style.display = 'none';
+      bar.innerHTML = '';
+      activeSub = 'alle';
+      return;
+    }
+
+    bar.style.display = 'flex';
+    const allLabel = activeFilter === 'cup' ? 'Begge cuper' : 'Alle tre';
+    bar.innerHTML = [{ code: 'alle', name: allLabel }, ...comps].map(c => {
+      const n = (c.teams || []).length;
+      const badge = c.code !== 'alle' && n ? ` <span class="count">${n}</span>` : '';
+      const title = c.code !== 'alle' && n ? ` title="${c.teams.join(', ')}"` : '';
+      return `<button class="filter-pill${activeSub === c.code ? ' active' : ''}" role="tab"
+        aria-selected="${activeSub === c.code}" data-sub="${c.code}"${title}>${c.name}${badge}</button>`;
+    }).join('');
+
+    bar.querySelectorAll('.filter-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeSub = btn.dataset.sub;
+        resultLimit = 15;
+        renderSubBar();
+        applyFilter();
+      });
+    });
+  }
+
+  function renderTabellNote(info) {
+    const el = document.getElementById('tabellNote');
+    if (!el) return;
+    if (!info) { el.textContent = ''; return; }
+
+    if (info.liveCount > 0) {
+      el.innerHTML = `Runde ${info.maxPlayed || ''} pågår · <span style="color:var(--gold)">oppdateres live</span>`;
+      return;
+    }
+    if (info.nextToday) {
+      const t = fmtTime(info.nextToday.date);
+      el.textContent = `Etter runde ${info.minPlayed} · oppdateres etter ${info.nextToday.home} – ${info.nextToday.away} kl. ${t}`;
+      return;
+    }
+    if (!info.complete) {
+      el.textContent = `Runde ${info.maxPlayed} pågår · ikke alle lag har spilt like mange kamper`;
+      return;
+    }
+    el.textContent = info.maxPlayed > 0 ? `Etter runde ${info.maxPlayed}` : 'Sesongen har ikke startet';
   }
 
   function applyFilter() {
     if (!latestData) return;
     const d = latestData;
 
-    const allResults = [
-      ...(d.results || []),
-      ...((d.europa && d.europa.results) || []),
-    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const filteredResults = (d.results || []).filter(matchesFilter);
+    renderResults(filteredResults, resultLimit);
+    renderFixtures((d.fixtures || []).filter(matchesFilter));
 
-    const allFixtures = [
-      ...(d.fixtures || []),
-      ...((d.europa && d.europa.fixtures) || []),
-    ].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const moreBtn = document.getElementById('moreResults');
+    if (moreBtn) {
+      const remaining = filteredResults.length - resultLimit;
+      moreBtn.style.display = remaining > 0 ? 'block' : 'none';
+      moreBtn.textContent = remaining > 0
+        ? `Vis flere resultater (${remaining} igjen)`
+        : 'Vis flere resultater';
+    }
 
-    renderResults(allResults.filter(matchesFilter));
-    renderFixtures(allFixtures.filter(matchesFilter));
-
-    const euroStandings = ((d.europa && d.europa.standings) || []);
-    const showEuro = (activeFilter === 'europa' || activeFilter === 'alle') && euroStandings.length > 0;
+    const euro = (d.euroStandings || []).filter(matchesFilter);
+    const showEuro = (activeFilter === 'europa' || activeFilter === 'alle') && euro.length > 0;
     const wrap = document.getElementById('europaStandingsWrap');
     if (wrap) {
       wrap.style.display = showEuro ? 'block' : 'none';
-      if (showEuro) renderEuropaStandings(euroStandings);
+      if (showEuro) renderEuropaStandings(euro);
     }
 
-    // Live pill counts so the user can see where the action is
-    const groups = { alle: allResults.length + allFixtures.length, liga: 0, cup: 0, europa: 0 };
-    [...allResults, ...allFixtures].forEach(m => {
+    const counts = { alle: 0, liga: 0, cup: 0, europa: 0 };
+    [...(d.results || []), ...(d.fixtures || [])].forEach(m => {
       const g = m.group || 'liga';
-      if (groups[g] !== undefined) groups[g]++;
+      counts.alle++;
+      if (counts[g] !== undefined) counts[g]++;
     });
-    document.querySelectorAll('.filter-pill').forEach(btn => {
+    document.querySelectorAll('.filter-bar:not(.sub-bar) .filter-pill').forEach(btn => {
       const f = btn.dataset.filter;
       const base = btn.textContent.replace(/\s*\d+$/, '').trim();
-      btn.innerHTML = base + (groups[f] ? ` <span class="count">${groups[f]}</span>` : '');
+      btn.innerHTML = base + (counts[f] ? ` <span class="count">${counts[f]}</span>` : '');
     });
 
     const note = document.getElementById('kamperNote');
     if (note) {
-      const labels = { alle: 'Alle turneringer', liga: 'Premier League', cup: 'FA-cupen og Ligacupen', europa: 'Europeiske turneringer' };
-      note.textContent = labels[activeFilter];
+      const comp = (d.competitions || []).find(c => c.code === activeSub);
+      if (comp && (comp.teams || []).length) {
+        note.textContent = `${comp.name} · engelske lag: ${comp.teams.join(', ')}`;
+      } else if (comp) {
+        note.textContent = `${comp.name} · ingen engelske lag med i \u00e5r`;
+      } else {
+        note.textContent = GROUP_LABELS[activeFilter];
+      }
     }
   }
 
-  document.querySelectorAll('.filter-pill').forEach(btn => {
+  document.querySelectorAll('.filter-bar:not(.sub-bar) .filter-pill').forEach(btn => {
     btn.addEventListener('click', () => {
       activeFilter = btn.dataset.filter;
-      document.querySelectorAll('.filter-pill').forEach(b => {
+      activeSub = 'alle';
+      resultLimit = 15;
+      document.querySelectorAll('.filter-bar:not(.sub-bar) .filter-pill').forEach(b => {
         const on = b === btn;
         b.classList.toggle('active', on);
         b.setAttribute('aria-selected', on ? 'true' : 'false');
       });
+      renderSubBar();
       applyFilter();
     });
   });
+
+  const moreBtnEl = document.getElementById('moreResults');
+  if (moreBtnEl) {
+    moreBtnEl.addEventListener('click', () => { resultLimit += 30; applyFilter(); });
+  }
 
   async function refreshLiveData() {
     const statusEl = document.getElementById('liveStatus');
@@ -786,13 +876,10 @@
       latestData = data;
 
       renderStandings(data.standings);
+      renderTabellNote(data.roundInfo);
+      renderSubBar();
       applyFilter();
-
-      const tickerFeed = [
-        ...(data.results || []),
-        ...((data.europa && data.europa.results) || []),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
-      renderTicker(tickerFeed);
+      renderTicker(data.results || []);
       renderSpotlight(data);
 
       if (statusEl) statusEl.textContent = 'oppdatert ' + fmtTime(data.updated || new Date().toISOString());
