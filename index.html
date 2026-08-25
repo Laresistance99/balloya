@@ -920,7 +920,9 @@
   async function refreshLiveData() {
     const statusEl = document.getElementById('liveStatus');
     try {
-      const res = await fetch('/api/live-data');
+      // The version tag gives us a fresh cache key whenever the backend changes,
+      // so a bad cached response can never outlive a deploy. Bump it on backend edits.
+      const res = await fetch('/api/live-data?v=4');
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       latestData = data;
