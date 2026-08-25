@@ -18,6 +18,7 @@
   .row > div{flex:1;}
   button{margin-top:22px;width:100%;padding:14px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:15px;cursor:pointer;}
   button.finish{background:var(--gold);color:var(--ink);margin-top:10px;}
+  button.remove{background:transparent;color:#B23A2E;border:1px solid #B23A2E;margin-top:10px;}
   #status{margin-top:14px;font-size:14px;padding:10px 12px;border-radius:8px;display:none;}
   #status.ok{display:block;background:rgba(39,72,255,0.1);color:var(--blue);}
   #status.err{display:block;background:rgba(178,58,46,0.1);color:#B23A2E;}
@@ -77,6 +78,7 @@
 
   <button id="submitBtn">Lagre og vis som live</button>
   <button id="finishBtn" class="finish">Merk kampen som ferdig</button>
+  <button id="removeBtn" class="remove">Fjern manuell oppdatering</button>
 
   <div id="status"></div>
 </div>
@@ -176,8 +178,40 @@ async function send(finished) {
   }
 }
 
+async function removeOverride() {
+  const statusEl = document.getElementById('status');
+  statusEl.className = '';
+  const m = currentMatch();
+  if (!m || !m.home || !m.away) {
+    statusEl.textContent = 'Velg en kamp f\u00f8rst.';
+    statusEl.className = 'err';
+    return;
+  }
+  if (!confirm(`Fjerne manuell oppdatering for ${m.home} - ${m.away}? Kampen g\u00e5r tilbake til automatiske data.`)) return;
+  try {
+    const res = await fetch('/api/update-score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        password: document.getElementById('password').value,
+        home: m.home, away: m.away, remove: true,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Noe gikk galt');
+    statusEl.textContent = data.removed
+      ? 'Fjernet. Kampen viser n\u00e5 automatiske data igjen.'
+      : 'Fant ingen manuell oppdatering for denne kampen.';
+    statusEl.className = 'ok';
+  } catch (e) {
+    statusEl.textContent = e.message;
+    statusEl.className = 'err';
+  }
+}
+
 document.getElementById('submitBtn').addEventListener('click', () => send(false));
 document.getElementById('finishBtn').addEventListener('click', () => send(true));
+document.getElementById('removeBtn').addEventListener('click', removeOverride);
 loadMatches();
 </script>
 </body>
