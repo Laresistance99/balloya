@@ -1,115 +1,53 @@
-<!DOCTYPE html>
-<html lang="no">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Balløya – manuell oppdatering</title>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<style>
-  :root{ --paper:#EAF0EA; --paper-card:#F8FBF7; --ink:#10241B; --ink-dim:#4B6358; --line:rgba(16,36,27,0.14); --blue:#2748FF; --gold:#E8A83C; }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;padding:24px;}
-  .wrap{max-width:480px;margin:0 auto;}
-  h1{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:28px;margin:0 0 4px;}
-  p.sub{color:var(--ink-dim);font-size:14px;margin:0 0 24px;}
-  label{display:block;font-size:12px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-dim);margin:16px 0 6px;}
-  input, textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:15px;}
-  .row{display:flex;gap:12px;}
-  .row > div{flex:1;}
-  button{margin-top:22px;width:100%;padding:14px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:15px;cursor:pointer;}
-  button.finish{background:var(--gold);color:var(--ink);margin-top:10px;}
-  #status{margin-top:14px;font-size:14px;padding:10px 12px;border-radius:8px;display:none;}
-  #status.ok{display:block;background:rgba(39,72,255,0.1);color:var(--blue);}
-  #status.err{display:block;background:rgba(178,58,46,0.1);color:#B23A2E;}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <h1>Manuell oppdatering</h1>
-  <p class="sub">Bruk denne siden når du er på kampen selv. Den sparer API-kall siden nettsiden bruker det du skriver inn i stedet for å spørre datakilden.</p>
+import { getStore } from "@netlify/blobs";
 
-  <label for="password">Passord</label>
-  <input type="password" id="password" autocomplete="current-password">
-
-  <div class="row">
-    <div>
-      <label for="home">Hjemmelag</label>
-      <input type="text" id="home" placeholder="F.eks. Arsenal">
-    </div>
-    <div>
-      <label for="away">Bortelag</label>
-      <input type="text" id="away" placeholder="F.eks. Chelsea">
-    </div>
-  </div>
-
-  <div class="row">
-    <div>
-      <label for="homeGoals">Mål hjemme</label>
-      <input type="number" id="homeGoals" min="0" value="0">
-    </div>
-    <div>
-      <label for="awayGoals">Mål borte</label>
-      <input type="number" id="awayGoals" min="0" value="0">
-    </div>
-  </div>
-
-  <label for="homeScorers">Målscorere, hjemmelag (ett per linje: navn, minutt)</label>
-  <textarea id="homeScorers" rows="3" placeholder="Saka, 34"></textarea>
-
-  <label for="awayScorers">Målscorere, bortelag (ett per linje: navn, minutt)</label>
-  <textarea id="awayScorers" rows="3" placeholder="Palmer, 61"></textarea>
-
-  <button id="submitBtn">Lagre og vis som live</button>
-  <button id="finishBtn" class="finish">Merk kampen som ferdig</button>
-
-  <div id="status"></div>
-</div>
-
-<script>
-function parseScorers(elementId, team) {
-  const raw = document.getElementById(elementId).value.trim();
-  if (!raw) return [];
-  return raw.split('\n').filter(Boolean).map(line => {
-    const [name, minute] = line.split(',').map(s => s.trim());
-    return { team, name: name || 'Ukjent', minute: minute || '' };
-  });
+function slug(a, b) {
+  const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  return `${norm(a)}-${norm(b)}`;
 }
 
-async function send(finished) {
-  const statusEl = document.getElementById('status');
-  statusEl.className = '';
-  const body = {
-    password: document.getElementById('password').value,
-    home: document.getElementById('home').value.trim(),
-    away: document.getElementById('away').value.trim(),
-    homeGoals: document.getElementById('homeGoals').value,
-    awayGoals: document.getElementById('awayGoals').value,
-    scorers: [...parseScorers('homeScorers', 'home'), ...parseScorers('awayScorers', 'away')],
-    finished,
-  };
-  if (!body.home || !body.away) {
-    statusEl.textContent = 'Fyll inn begge lagnavn.';
-    statusEl.className = 'err';
-    return;
+export default async (req, context) => {
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Bruk POST" }), { status: 405 });
   }
+
+  let body;
   try {
-    const res = await fetch('/api/update-score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Noe gikk galt');
-    statusEl.textContent = finished ? 'Kampen er merket som ferdig.' : 'Lagret! Nettsiden viser dette innen ca. ett minutt.';
-    statusEl.className = 'ok';
-  } catch (e) {
-    statusEl.textContent = e.message;
-    statusEl.className = 'err';
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Ugyldig data" }), { status: 400 });
   }
-}
 
-document.getElementById('submitBtn').addEventListener('click', () => send(false));
-document.getElementById('finishBtn').addEventListener('click', () => send(true));
-</script>
-</body>
-</html>
+  const expected = Netlify.env.get("ADMIN_PASSWORD");
+  if (!expected || body.password !== expected) {
+    return new Response(JSON.stringify({ error: "Feil passord" }), { status: 401 });
+  }
+
+  const { home, away, homeGoals, awayGoals, scorers, finished, competition, competitionName } = body;
+  if (!home || !away) {
+    return new Response(JSON.stringify({ error: "Mangler lagnavn" }), { status: 400 });
+  }
+
+  const store = getStore("balloya-live");
+  const manualStore = (await store.get("manual", { type: "json" }).catch(() => null)) || {};
+
+  const key = slug(home, away);
+  manualStore[key] = {
+    home,
+    away,
+    homeGoals: Number(homeGoals) || 0,
+    awayGoals: Number(awayGoals) || 0,
+    scorers: Array.isArray(scorers) ? scorers : [],
+    finished: !!finished,
+    competition: competition || "PL",
+    competitionName: competitionName || "Premier League",
+    updatedAt: Date.now(),
+  };
+
+  await store.setJSON("manual", manualStore);
+
+  return new Response(JSON.stringify({ ok: true, key }), {
+    headers: { "content-type": "application/json" },
+  });
+};
+
+export const config = { path: "/api/update-score" };
