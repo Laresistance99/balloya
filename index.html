@@ -372,32 +372,11 @@
   </div>
 </header>
 
-<div class="ticker" aria-label="Resultater, runde 1">
-  <div class="ticker-label">RUNDE 1</div>
+<div class="ticker" aria-label="Siste resultater">
+  <div class="ticker-label" id="tickerLabel">SISTE</div>
   <div class="ticker-viewport">
-    <div class="ticker-track" id="tickerTrack">
-      <span class="ticker-chip"><span class="ft">FT</span> ARS 3–0 COV</span>
-      <span class="ticker-chip"><span class="ft">FT</span> HUL 2–0 MUN</span>
-      <span class="ticker-chip"><span class="ft">FT</span> EVE 2–0 CRY</span>
-      <span class="ticker-chip"><span class="ft">FT</span> IPS 2–1 SUN</span>
-      <span class="ticker-chip"><span class="ft">FT</span> NFO 0–1 LEE</span>
-      <span class="ticker-chip"><span class="ft">FT</span> BRE 3–0 TOT</span>
-      <span class="ticker-chip"><span class="ft">FT</span> BRI 4–0 AVL</span>
-      <span class="ticker-chip"><span class="ft">FT</span> MCI 2–1 BOU</span>
-      <span class="ticker-chip"><span class="ft">FT</span> NEW 2–2 LFC</span>
-      <span class="ticker-chip"><span class="ft" style="color:#FF8A65">21:00</span> FUL – CFC</span>
-      <!-- duplicate for seamless loop -->
-      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> ARS 3–0 COV</span>
-      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> HUL 2–0 MUN</span>
-      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> EVE 2–0 CRY</span>
-      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> IPS 2–1 SUN</span>
-      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> NFO 0–1 LEE</span>
-      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> BRE 3–0 TOT</span>
-      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> BRI 4–0 AVL</span>
-      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> MCI 2–1 BOU</span>
-      <span class="ticker-chip" aria-hidden="true"><span class="ft">FT</span> NEW 2–2 LFC</span>
-      <span class="ticker-chip" aria-hidden="true"><span class="ft" style="color:#FF8A65">21:00</span> FUL – CFC</span>
-    </div>
+    <div class="ticker-track" id="tickerTrack"></div>
+    
   </div>
 </div>
 <div id="tickerPop" class="ticker-pop" role="tooltip" aria-hidden="true"></div>
@@ -435,26 +414,7 @@
             </tr>
           </thead>
           <tbody id="standingsBody">
-            <tr class="top4"><td class="pos">1</td><td class="team">Brighton &amp; Hove Albion</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
-            <tr class="top4"><td class="pos">2</td><td class="team">Arsenal</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
-            <tr class="top4"><td class="pos">3</td><td class="team">Brentford</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
-            <tr class="top4"><td class="pos">4</td><td class="team">Everton</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
-            <tr><td class="pos">5</td><td class="team">Hull City</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
-            <tr><td class="pos">6</td><td class="team">Ipswich Town</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
-            <tr><td class="pos">7</td><td class="team">Manchester City</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
-            <tr><td class="pos">8</td><td class="team">Leeds United</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num pts">3</td></tr>
-            <tr><td class="pos">9</td><td class="team">Liverpool</td><td class="num">1</td><td class="num">0</td><td class="num">1</td><td class="num">0</td><td class="num pts">1</td></tr>
-            <tr><td class="pos">10</td><td class="team">Newcastle United</td><td class="num">1</td><td class="num">0</td><td class="num">1</td><td class="num">0</td><td class="num pts">1</td></tr>
-            <tr><td class="pos">11</td><td class="team">Chelsea</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num pts">0</td></tr>
-            <tr><td class="pos">12</td><td class="team">Fulham</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num pts">0</td></tr>
-            <tr><td class="pos">13</td><td class="team">AFC Bournemouth</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
-            <tr><td class="pos">14</td><td class="team">Sunderland</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
-            <tr><td class="pos">15</td><td class="team">Nottingham Forest</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
-            <tr><td class="pos">16</td><td class="team">Crystal Palace</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
-            <tr><td class="pos">17</td><td class="team">Manchester United</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
-            <tr class="releg"><td class="pos">18</td><td class="team">Coventry City</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
-            <tr class="releg"><td class="pos">19</td><td class="team">Tottenham Hotspur</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
-            <tr class="releg"><td class="pos">20</td><td class="team">Aston Villa</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num pts">0</td></tr>
+            <tr><td colspan="9" class="empty-note">Laster tabell …</td></tr>
           </tbody>
         </table>
       </div>
@@ -572,7 +532,11 @@
 
   function renderStandings(standings) {
     const body = document.getElementById('standingsBody');
-    if (!body || !standings || !standings.length) return;
+    if (!body) return;
+    if (!standings || !standings.length) {
+      body.innerHTML = '<tr><td colspan="9" class="empty-note">Tabellen er ikke tilgjengelig akkurat n\u00e5.</td></tr>';
+      return;
+    }
     body.innerHTML = standings.map((s, i) => {
       const cls = i < 4 ? 'top4' : (i >= standings.length - 3 ? 'releg' : '');
       const gf = s.goalsFor ?? 0, ga = s.goalsAgainst ?? 0;
