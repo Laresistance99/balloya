@@ -263,8 +263,13 @@ export default async (req, context) => {
     const upcomingTimes = fixtures.map((f) => new Date(f.date).getTime()).filter((t) => t > now);
     const minutesToNextKickoff = upcomingTimes.length ? (Math.min(...upcomingTimes) - now) / 60000 : Infinity;
 
+    // A degraded response must never be cached for hours — that was the cause of
+    // the site showing an empty table long after the data was healthy again.
+    const healthy = standings.length > 0 && (results.length > 0 || fixtures.length > 0);
+
     let cacheSeconds;
-    if (anyLive) cacheSeconds = 150;
+    if (!healthy) cacheSeconds = 60;
+    else if (anyLive) cacheSeconds = 150;
     else if (minutesToNextKickoff <= 120) cacheSeconds = 900;
     else cacheSeconds = 28800;
 
