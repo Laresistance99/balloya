@@ -7,6 +7,16 @@
 <meta name="description" content="Tabell, resultater, kommende kamper og nyheter fra Premier League – samlet på norsk.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script>
+(function(){
+  try{
+    var saved = localStorage.getItem('balloya-theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var theme = saved || (prefersDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){}
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -19,9 +29,33 @@
     --blue-dim: rgba(39,72,255,0.10);
     --gold:#E8A83C;
     --red:#B23A2E;
+    /* Surfaces that stay dark in both themes (ticker, popups) */
+    --panel-bg:#10241B;
+    --panel-fg:#EAF0EA;
+    --on-gold:#10241B;
+    --shadow: rgba(16,36,27,0.22);
+    --on-blue:#FFFFFF;
     --maxw: 1120px;
     --radius: 10px;
   }
+  html[data-theme="dark"]{
+    --paper:#0C1712;
+    --paper-card:#152420;
+    --ink:#E7EFE9;
+    --ink-dim:#93A89C;
+    --line: rgba(231,239,233,0.16);
+    --blue:#7C93FF;
+    --blue-dim: rgba(124,147,255,0.16);
+    --gold:#F0BC5E;
+    --red:#E8776A;
+    --panel-bg:#05100C;
+    --panel-fg:#E7EFE9;
+    --on-gold:#10241B;
+    --shadow: rgba(0,0,0,0.55);
+    --on-blue:#0C1712;
+  }
+  html{color-scheme:light;}
+  html[data-theme="dark"]{color-scheme:dark;}
   *{box-sizing:border-box;}
   html{scroll-behavior:smooth;}
   body{
@@ -57,9 +91,21 @@
   .masthead nav a:hover{border-bottom-color:var(--blue);}
 
   /* ---------- Vidiprinter ticker ---------- */
+  .theme-toggle{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:34px; height:34px; padding:0;
+    border:1px solid var(--line); border-radius:999px;
+    background:var(--paper-card); color:var(--ink-dim);
+    cursor:pointer; transition:color .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .theme-toggle:hover{color:var(--blue); border-color:var(--blue);}
+  .theme-toggle .icon-moon{display:none;}
+  html[data-theme="dark"] .theme-toggle .icon-sun{display:none;}
+  html[data-theme="dark"] .theme-toggle .icon-moon{display:block;}
+
   .ticker{
-    background:var(--ink);
-    color:var(--paper);
+    background:var(--panel-bg);
+    color:var(--panel-fg);
     overflow:hidden;
     position:relative;
     border-bottom:1px solid var(--line);
@@ -69,7 +115,7 @@
     display:flex; align-items:center;
     padding:0 14px;
     background:var(--gold);
-    color:var(--ink);
+    color:var(--on-gold);
     font-family:'IBM Plex Mono', monospace;
     font-size:11px; font-weight:600; letter-spacing:0.08em;
     z-index:2;
@@ -127,7 +173,7 @@
   }
   .spotlight-tag{
     display:inline-flex; align-items:center; gap:6px;
-    background:var(--gold); color:var(--ink);
+    background:var(--gold); color:var(--on-gold);
     font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600;
     letter-spacing:0.08em; padding:4px 9px; border-radius:4px;
     margin-bottom:10px;
@@ -152,7 +198,7 @@
     background:var(--paper-card); color:var(--ink);
     border:1px solid var(--line); border-radius:8px;
     padding:12px 14px; font-size:13px; line-height:1.55;
-    box-shadow:0 8px 24px rgba(16,36,27,0.26);
+    box-shadow:0 8px 24px var(--shadow);
     opacity:0; visibility:hidden; transform:translateY(-4px);
     transition:opacity .15s ease, transform .15s ease, visibility .15s;
     pointer-events:none;
@@ -168,10 +214,10 @@
   .scorer-pop{
     position:absolute; left:12px; right:12px; top:100%;
     margin-top:6px; z-index:40;
-    background:var(--ink); color:var(--paper);
+    background:var(--panel-bg); color:var(--panel-fg);
     border-radius:8px; padding:12px 14px;
     font-size:13px; line-height:1.55;
-    box-shadow:0 6px 20px rgba(16,36,27,0.22);
+    box-shadow:0 6px 20px var(--shadow);
     opacity:0; visibility:hidden;
     transform:translateY(-4px);
     transition:opacity .16s ease, transform .16s ease, visibility .16s;
@@ -182,7 +228,7 @@
   }
   .scorer-pop .pop-side{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--gold); margin-bottom:2px;}
   .scorer-pop .pop-group + .pop-group{margin-top:9px;}
-  .scorer-pop .pop-none{color:rgba(234,240,234,0.65);}
+  .scorer-pop .pop-none{color:rgba(234,240,234,0.6);}
   .tap-hint{font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.05em; color:var(--blue); margin-top:8px; text-transform:uppercase;}
   @media (hover: hover){ .tap-hint{display:none;} }
 
@@ -202,7 +248,7 @@
     white-space:nowrap;
   }
   .filter-pill:hover{border-color:var(--blue); color:var(--blue);}
-  .filter-pill.active{background:var(--blue); color:#fff; border-color:var(--blue);}
+  .filter-pill.active{background:var(--blue); color:var(--on-blue); border-color:var(--blue);}
   .filter-pill .count{opacity:0.65; margin-left:5px; font-family:'IBM Plex Mono',monospace; font-size:11px;}
   .sub-bar{margin-top:-14px; margin-bottom:22px;}
   .sub-bar .filter-pill{font-size:12.5px; padding:6px 13px; background:transparent;}
@@ -312,6 +358,15 @@
       <a href="#tabell">Tabell</a>
       <a href="#kamper">Kamper</a>
       <a href="#nyheter">Nyheter</a>
+      <button id="themeToggle" class="theme-toggle" aria-label="Bytt mellom lys og mørk modus" title="Bytt visning">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/>
+        </svg>
+      </button>
       <span id="liveStatus" class="mono" style="font-size:11px;color:var(--ink-dim);"></span>
     </nav>
   </div>
@@ -868,6 +923,30 @@
       applyFilter();
     });
   });
+
+  // Theme toggle. The initial value is set by the inline script in <head>
+  // so the page never flashes the wrong colours on load.
+  const themeBtn = document.getElementById('themeToggle');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('balloya-theme', next); } catch (e) {}
+    });
+  }
+
+  // Follow the operating system if the reader hasn't picked a side themselves.
+  if (window.matchMedia) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onSystemChange = (e) => {
+      let saved = null;
+      try { saved = localStorage.getItem('balloya-theme'); } catch (err) {}
+      if (!saved) document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onSystemChange);
+    else if (mq.addListener) mq.addListener(onSystemChange);
+  }
 
   const moreBtnEl = document.getElementById('moreResults');
   if (moreBtnEl) {
