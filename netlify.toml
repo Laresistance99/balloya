@@ -1,3 +1,184 @@
-[build]
-  functions = "netlify/functions"
-  publish = "."
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balloya - manuell oppdatering</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{ --paper:#EAF0EA; --paper-card:#F8FBF7; --ink:#10241B; --ink-dim:#4B6358; --line:rgba(16,36,27,0.14); --blue:#2748FF; --gold:#E8A83C; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;padding:24px;}
+  .wrap{max-width:480px;margin:0 auto;}
+  h1{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:28px;margin:0 0 4px;}
+  p.sub{color:var(--ink-dim);font-size:14px;margin:0 0 20px;}
+  label{display:block;font-size:12px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-dim);margin:16px 0 6px;}
+  input, textarea, select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:15px;}
+  .row{display:flex;gap:12px;}
+  .row > div{flex:1;}
+  button{margin-top:22px;width:100%;padding:14px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:15px;cursor:pointer;}
+  button.finish{background:var(--gold);color:var(--ink);margin-top:10px;}
+  #status{margin-top:14px;font-size:14px;padding:10px 12px;border-radius:8px;display:none;}
+  #status.ok{display:block;background:rgba(39,72,255,0.1);color:var(--blue);}
+  #status.err{display:block;background:rgba(178,58,46,0.1);color:#B23A2E;}
+  #manualFields{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Manuell oppdatering</h1>
+  <p class="sub">Velg kampen fra listen (hentet fra nettsiden), skriv inn stillingen, og lagre. Sparer API-kall for kampen du er p&aring;.</p>
+
+  <label for="password">Passord</label>
+  <input type="password" id="password" autocomplete="current-password">
+
+  <label for="matchPicker">Kamp</label>
+  <select id="matchPicker">
+    <option value="">Laster kamper...</option>
+    <option value="__manual__">Annet (skriv inn selv)</option>
+  </select>
+
+  <div id="manualFields">
+    <div class="row">
+      <div>
+        <label for="home">Hjemmelag</label>
+        <input type="text" id="home" placeholder="F.eks. Arsenal">
+      </div>
+      <div>
+        <label for="away">Bortelag</label>
+        <input type="text" id="away" placeholder="F.eks. Chelsea">
+      </div>
+    </div>
+    <label for="competition">Turnering</label>
+    <select id="competition">
+      <option value="PL">Premier League</option>
+      <option value="CL">Champions League</option>
+      <option value="EL">Europa League</option>
+      <option value="CN">Conference League</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <div>
+      <label for="homeGoals">Mal hjemme</label>
+      <input type="number" id="homeGoals" min="0" value="0">
+    </div>
+    <div>
+      <label for="awayGoals">Mal borte</label>
+      <input type="number" id="awayGoals" min="0" value="0">
+    </div>
+  </div>
+
+  <label for="homeScorers">Malscorere, hjemmelag (ett per linje: navn, minutt)</label>
+  <textarea id="homeScorers" rows="3" placeholder="Saka, 34"></textarea>
+
+  <label for="awayScorers">Malscorere, bortelag (ett per linje: navn, minutt)</label>
+  <textarea id="awayScorers" rows="3" placeholder="Palmer, 61"></textarea>
+
+  <button id="submitBtn">Lagre og vis som live</button>
+  <button id="finishBtn" class="finish">Merk kampen som ferdig</button>
+
+  <div id="status"></div>
+</div>
+
+<script>
+let matches = [];
+
+async function loadMatches() {
+  const picker = document.getElementById('matchPicker');
+  try {
+    const res = await fetch('/api/live-data');
+    const data = await res.json();
+    matches = [];
+    (data.results || []).forEach(r => matches.push({ home: r.home, away: r.away, competition: 'PL', label: r.home + ' - ' + r.away + ' (PL)' }));
+    (data.fixtures || []).forEach(r => matches.push({ home: r.home, away: r.away, competition: 'PL', label: r.home + ' - ' + r.away + ' (PL, kommende)' }));
+    if (data.europa) {
+      (data.europa.results || []).forEach(r => matches.push({ home: r.home, away: r.away, competition: r.competition, label: r.home + ' - ' + r.away + ' (' + r.competition + ')' }));
+      (data.europa.fixtures || []).forEach(r => matches.push({ home: r.home, away: r.away, competition: r.competition, label: r.home + ' - ' + r.away + ' (' + r.competition + ', kommende)' }));
+    }
+    picker.innerHTML = '<option value="">Velg kamp...</option>' +
+      matches.map((m, i) => '<option value="' + i + '">' + m.label + '</option>').join('') +
+      '<option value="__manual__">Annet (skriv inn selv)</option>';
+  } catch (e) {
+    picker.innerHTML = '<option value="__manual__">Kunne ikke laste kamper - skriv inn selv</option>';
+    document.getElementById('manualFields').style.display = 'block';
+  }
+}
+
+document.getElementById('matchPicker').addEventListener('change', (e) => {
+  const val = e.target.value;
+  const manualFields = document.getElementById('manualFields');
+  if (val === '__manual__') {
+    manualFields.style.display = 'block';
+    document.getElementById('home').value = '';
+    document.getElementById('away').value = '';
+  } else if (val !== '') {
+    manualFields.style.display = 'none';
+  }
+});
+
+function parseScorers(elementId, team) {
+  const raw = document.getElementById(elementId).value.trim();
+  if (!raw) return [];
+  return raw.split('\n').filter(Boolean).map(line => {
+    const parts = line.split(',').map(s => s.trim());
+    return { team, name: parts[0] || 'Ukjent', minute: parts[1] || '' };
+  });
+}
+
+function currentMatch() {
+  const val = document.getElementById('matchPicker').value;
+  if (val === '__manual__' || val === '') {
+    return {
+      home: document.getElementById('home').value.trim(),
+      away: document.getElementById('away').value.trim(),
+      competition: document.getElementById('competition').value,
+    };
+  }
+  return matches[Number(val)];
+}
+
+const COMP_NAMES = { PL: 'Premier League', CL: 'Champions League', EL: 'Europa League', CN: 'Conference League' };
+
+async function send(finished) {
+  const statusEl = document.getElementById('status');
+  statusEl.className = '';
+  const m = currentMatch();
+  if (!m || !m.home || !m.away) {
+    statusEl.textContent = 'Velg en kamp eller fyll inn lagnavn.';
+    statusEl.className = 'err';
+    return;
+  }
+  const body = {
+    password: document.getElementById('password').value,
+    home: m.home,
+    away: m.away,
+    competition: m.competition,
+    competitionName: COMP_NAMES[m.competition] || 'Premier League',
+    homeGoals: document.getElementById('homeGoals').value,
+    awayGoals: document.getElementById('awayGoals').value,
+    scorers: [...parseScorers('homeScorers', 'home'), ...parseScorers('awayScorers', 'away')],
+    finished,
+  };
+  try {
+    const res = await fetch('/api/update-score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Noe gikk galt');
+    statusEl.textContent = finished ? 'Kampen er merket som ferdig.' : 'Lagret! Nettsiden viser dette innen ca. ett minutt.';
+    statusEl.className = 'ok';
+  } catch (e) {
+    statusEl.textContent = e.message;
+    statusEl.className = 'err';
+  }
+}
+
+document.getElementById('submitBtn').addEventListener('click', () => send(false));
+document.getElementById('finishBtn').addEventListener('click', () => send(true));
+loadMatches();
+</script>
+</body>
+</html>
