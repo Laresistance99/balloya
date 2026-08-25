@@ -1,12 +1,20 @@
+import { getStore } from "@netlify/blobs";
+
 const LEAGUE_ID = 39; // Premier League in API-Football
 const SEASON = 2026;  // 2026-27 season
 const API_BASE = "https://v3.football.api-sports.io";
+const MANUAL_TTL_MS = 24 * 60 * 60 * 1000; // manual entries stop overriding after 24h
 
 const EURO_COMPETITIONS = [
   { id: 2, code: "CL", name: "Champions League" },
   { id: 3, code: "EL", name: "Europa League" },
   { id: 4, code: "CN", name: "Conference League" },
 ];
+
+function slug(a, b) {
+  const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  return `${norm(a)}-${norm(b)}`;
+}
 
 function statusIsLive(short) {
   return ["1H", "HT", "2H", "ET", "P", "LIVE", "BT"].includes(short);
@@ -47,6 +55,24 @@ async function fetchScorers(fixtureList, apiKey) {
   return scorersById;
 }
 
+function applyManualOverlay(list, manualStore) {
+  const now = Date.now();
+  return list.map((entry) => {
+    const manual = manualStore[slug(entry.home, entry.away)];
+    if (manual && now - manual.updatedAt < MANUAL_TTL_MS) {
+      return {
+        ...entry,
+        homeGoals: manual.homeGoals,
+        awayGoals: manual.awayGoals,
+        scorers: manual.scorers && manual.scorers.length ? manual.scorers : entry.scorers,
+        status: manual.finished ? "FT" : "LIVE",
+        manual: true,
+      };
+    }
+    return entry;
+  });
+}
+
 export default async (req, context) => {
   const apiKey = Netlify.env.get("API_FOOTBALL_KEY");
 
@@ -56,6 +82,14 @@ export default async (req, context) => {
       headers: { "content-type": "application/json" },
     });
   }
+
+  const store = getStore("balloya-live");
+  const manualStore = (await store.get("manual", { type: "json" }).catch(() => null)) || {};
+  const now = Date.now();
+  const hasManualCover = (home, away) => {
+    const m = manualStore[slug(home, away)];
+    return m && now - m.updatedAt < MANUAL_TTL_MS;
+  };
 
   try {
     const today = new Date();
@@ -75,7 +109,11 @@ export default async (req, context) => {
       (standingsResp?.[0]?.league?.standings?.[0] || []).map((s) => s.team.name)
     );
 
-    const scorersById = await fetchScorers(fixtures, apiKey);
+    // Skip the API scorer lookup entirely for anything already covered manually.
+    const fixturesNeedingScorers = fixtures.filter(
+      (f) => !hasManualCover(f.teams.home.name, f.teams.away.name)
+    );
+    const scorersById = await fetchScorers(fixturesNeedingScorers, apiKey);
 
     const europaResults = [];
     const europaFixtures = [];
@@ -93,6 +131,9 @@ export default async (req, context) => {
         const englishFixtures = euroFixturesAll.filter(
           (f) => englishClubs.has(f.teams.home.name) || englishClubs.has(f.teams.away.name)
         );
+        const englishFixturesNeedingScorers = englishFixtures.filter(
+          (f) => !hasManualCover(f.teams.home.name, f.teams.away.name)
+        );
 
         const sampleNames = [
           ...new Set(euroFixturesAll.flatMap((f) => [f.teams.home.name, f.teams.away.name])),
@@ -104,7 +145,7 @@ export default async (req, context) => {
           fixturesError: euroFixturesJson.errors,
           sampleTeamNames: sampleNames,
         });
-        const euroScorers = await fetchScorers(englishFixtures, apiKey);
+        const euroScorers = await fetchScorers(englishFixturesNeedingScorers, apiKey);
 
         for (const f of englishFixtures) {
           const entry = {
@@ -143,9 +184,6 @@ export default async (req, context) => {
       }
     }
 
-    europaResults.sort((a, b) => new Date(b.date) - new Date(a.date));
-    europaFixtures.sort((a, b) => new Date(a.date) - new Date(b.date));
-
     const standings = (standingsResp?.[0]?.league?.standings?.[0] || []).map((s) => ({
       rank: s.rank,
       team: s.team.name,
@@ -156,7 +194,7 @@ export default async (req, context) => {
       points: s.points,
     }));
 
-    const results = fixtures
+    let results = fixtures
       .filter((f) => f.fixture.status.short === "FT" || statusIsLive(f.fixture.status.short))
       .map((f) => ({
         id: f.fixture.id,
@@ -169,6 +207,11 @@ export default async (req, context) => {
         scorers: scorersById[f.fixture.id] || [],
       }))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
+    results = applyManualOverlay(results, manualStore);
+
+    let europaResultsFinal = applyManualOverlay(europaResults, manualStore);
+    europaResultsFinal.sort((a, b) => new Date(b.date) - new Date(a.date));
+    europaFixtures.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const upcoming = fixtures
       .filter((f) => f.fixture.status.short === "NS")
@@ -176,7 +219,6 @@ export default async (req, context) => {
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 10);
 
-    const now = Date.now();
     const upcomingTimes = [
       ...fixtures.filter((f) => f.fixture.status.short === "NS").map((f) => new Date(f.fixture.date).getTime()),
       ...europaFixtures.map((f) => new Date(f.date).getTime()),
@@ -185,15 +227,16 @@ export default async (req, context) => {
       ? (Math.min(...upcomingTimes) - now) / 60000
       : Infinity;
 
-    const anyLive = fixtures.some((f) => statusIsLive(f.fixture.status.short)) || europaResults.some((r) => statusIsLive(r.status));
+    const anyLive =
+      results.some((r) => statusIsLive(r.status)) || europaResultsFinal.some((r) => statusIsLive(r.status));
 
     let cacheSeconds;
     if (anyLive) {
-      cacheSeconds = 150; // live match in progress: check every ~2.5 min
+      cacheSeconds = 150;
     } else if (minutesToNextKickoff <= 120) {
-      cacheSeconds = 900; // kickoff coming up soon: check every 15 min
+      cacheSeconds = 900;
     } else {
-      cacheSeconds = 28800; // genuine downtime: check roughly 3 times a day
+      cacheSeconds = 28800;
     }
 
     return new Response(
@@ -201,7 +244,7 @@ export default async (req, context) => {
         standings,
         results,
         fixtures: upcoming,
-        europa: { standings: europaStandings, results: europaResults, fixtures: europaFixtures },
+        europa: { standings: europaStandings, results: europaResultsFinal, fixtures: europaFixtures },
         europaDebug,
         updated: new Date().toISOString(),
       }),
