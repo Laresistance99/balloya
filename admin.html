@@ -100,7 +100,7 @@ let matches = [];
 async function loadMatches() {
   const picker = document.getElementById('matchPicker');
   try {
-    const res = await fetch('/api/live-data');
+    const res = await fetch('/api/live-data?v=4');
     const data = await res.json();
     matches = [];
     (data.results || []).forEach(r => matches.push({ home: r.home, away: r.away, competition: 'PL', label: r.home + ' - ' + r.away + ' (PL)' }));
