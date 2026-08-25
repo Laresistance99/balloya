@@ -175,8 +175,25 @@ export default async (req, context) => {
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 10);
 
+    const now = Date.now();
+    const upcomingTimes = [
+      ...fixtures.filter((f) => f.fixture.status.short === "NS").map((f) => new Date(f.fixture.date).getTime()),
+      ...europaFixtures.map((f) => new Date(f.date).getTime()),
+    ];
+    const minutesToNextKickoff = upcomingTimes.length
+      ? (Math.min(...upcomingTimes) - now) / 60000
+      : Infinity;
+
     const anyLive = fixtures.some((f) => statusIsLive(f.fixture.status.short)) || europaResults.some((r) => statusIsLive(r.status));
-    const cacheSeconds = anyLive ? 150 : 1200;
+
+    let cacheSeconds;
+    if (anyLive) {
+      cacheSeconds = 150; // live match in progress: check every ~2.5 min
+    } else if (minutesToNextKickoff <= 120) {
+      cacheSeconds = 900; // kickoff coming up soon: check every 15 min
+    } else {
+      cacheSeconds = 28800; // genuine downtime: check roughly 3 times a day
+    }
 
     return new Response(
       JSON.stringify({
