@@ -5,10 +5,14 @@ const SEASON = 2026;  // 2026-27 season
 const API_BASE = "https://v3.football.api-sports.io";
 const MANUAL_TTL_MS = 24 * 60 * 60 * 1000; // manual entries stop overriding after 24h
 
-const EURO_COMPETITIONS = [
-  { id: 2, code: "CL", name: "Champions League" },
-  { id: 3, code: "EL", name: "Europa League" },
-  { id: 848, code: "CN", name: "Conference League" },
+// group: 'liga' | 'cup' | 'europa' — drives the filter pills on the site.
+// standings: true only for competitions that actually have a table.
+const EXTRA_COMPETITIONS = [
+  { id: 45, code: "FA", name: "FA-cupen", group: "cup", standings: false },
+  { id: 48, code: "EFL", name: "Ligacupen", group: "cup", standings: false },
+  { id: 2, code: "CL", name: "Champions League", group: "europa", standings: true },
+  { id: 3, code: "EL", name: "Europa League", group: "europa", standings: true },
+  { id: 848, code: "CN", name: "Conference League", group: "europa", standings: true },
 ];
 
 function slug(a, b) {
@@ -120,10 +124,14 @@ export default async (req, context) => {
     const europaStandings = [];
     const europaDebug = [];
 
-    for (const comp of EURO_COMPETITIONS) {
+    for (const comp of EXTRA_COMPETITIONS) {
       try {
-        const euroStandingsJson = await apiFetch(`/standings?league=${comp.id}&season=${SEASON}`, apiKey);
-        await sleep(220);
+        // Cups are knockout — no table to fetch, so skip that call entirely.
+        let euroStandingsJson = { response: [] };
+        if (comp.standings) {
+          euroStandingsJson = await apiFetch(`/standings?league=${comp.id}&season=${SEASON}`, apiKey);
+          await sleep(220);
+        }
         const euroFixturesJson = await apiFetch(`/fixtures?league=${comp.id}&season=${SEASON}&from=${from}&to=${to}`, apiKey);
         await sleep(220);
 
@@ -159,6 +167,7 @@ export default async (req, context) => {
             scorers: euroScorers[f.fixture.id] || [],
             competition: comp.code,
             competitionName: comp.name,
+            group: comp.group,
           };
           if (entry.status === "FT" || statusIsLive(entry.status)) europaResults.push(entry);
           else if (entry.status === "NS") europaFixtures.push(entry);
@@ -175,6 +184,7 @@ export default async (req, context) => {
                 points: s.points,
                 competition: comp.code,
                 competitionName: comp.name,
+                group: comp.group,
               });
             }
           }
@@ -205,6 +215,9 @@ export default async (req, context) => {
         homeGoals: f.goals.home,
         awayGoals: f.goals.away,
         scorers: scorersById[f.fixture.id] || [],
+        competition: "PL",
+        competitionName: "Premier League",
+        group: "liga",
       }))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
     results = applyManualOverlay(results, manualStore);
@@ -215,9 +228,17 @@ export default async (req, context) => {
 
     const upcoming = fixtures
       .filter((f) => f.fixture.status.short === "NS")
-      .map((f) => ({ id: f.fixture.id, date: f.fixture.date, home: f.teams.home.name, away: f.teams.away.name }))
+      .map((f) => ({
+        id: f.fixture.id,
+        date: f.fixture.date,
+        home: f.teams.home.name,
+        away: f.teams.away.name,
+        competition: "PL",
+        competitionName: "Premier League",
+        group: "liga",
+      }))
       .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(0, 10);
+      .slice(0, 12);
 
     const upcomingTimes = [
       ...fixtures.filter((f) => f.fixture.status.short === "NS").map((f) => new Date(f.fixture.date).getTime()),
