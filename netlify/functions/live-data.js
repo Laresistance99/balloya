@@ -219,7 +219,11 @@ export default async (req, context) => {
 
     const standings = plTable.map((s) => ({
       rank: s.rank, team: s.team.name, played: s.all.played,
-      win: s.all.win, draw: s.all.draw, lose: s.all.lose, points: s.points,
+      win: s.all.win, draw: s.all.draw, lose: s.all.lose,
+      goalsFor: s.all?.goals?.for ?? 0,
+      goalsAgainst: s.all?.goals?.against ?? 0,
+      goalDiff: s.goalsDiff ?? ((s.all?.goals?.for ?? 0) - (s.all?.goals?.against ?? 0)),
+      points: s.points,
     }));
 
     const euroStandings = [];
