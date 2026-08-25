@@ -8,7 +8,7 @@ const MANUAL_TTL_MS = 24 * 60 * 60 * 1000; // manual entries stop overriding aft
 const EURO_COMPETITIONS = [
   { id: 2, code: "CL", name: "Champions League" },
   { id: 3, code: "EL", name: "Europa League" },
-  { id: 4, code: "CN", name: "Conference League" },
+  { id: 848, code: "CN", name: "Conference League" },
 ];
 
 function slug(a, b) {
