@@ -22,7 +22,7 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: "Feil passord" }), { status: 401 });
   }
 
-  const { home, away, homeGoals, awayGoals, scorers, finished, competition, competitionName } = body;
+  const { home, away, homeGoals, awayGoals, scorers, finished, competition, competitionName, remove } = body;
   if (!home || !away) {
     return new Response(JSON.stringify({ error: "Mangler lagnavn" }), { status: 400 });
   }
@@ -31,6 +31,17 @@ export default async (req, context) => {
   const manualStore = (await store.get("manual", { type: "json" }).catch(() => null)) || {};
 
   const key = slug(home, away);
+
+  // Removing an override hands the match straight back to the live data source.
+  if (remove) {
+    const existed = Boolean(manualStore[key]);
+    delete manualStore[key];
+    await store.setJSON("manual", manualStore);
+    return new Response(JSON.stringify({ ok: true, removed: existed, key }), {
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   manualStore[key] = {
     home,
     away,
