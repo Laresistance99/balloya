@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Premier League – på norsk</title>
-<meta name="description" content="Tabell, resultater, kommende kamper og nyheter fra Premier League – samlet på norsk.">
+<meta name="description" content="Tabell, resultater og kommende kamper fra Premier League – samlet på norsk.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script>
@@ -265,39 +265,6 @@
     cursor:pointer; transition:border-color .15s ease;
   }
   .more-btn:hover{border-color:var(--blue);}
-  .archive-search{
-    width:100%; padding:11px 14px; margin-bottom:18px;
-    border:1px solid var(--line); border-radius:8px;
-    background:var(--paper-card); color:var(--ink);
-    font-family:'IBM Plex Sans',sans-serif; font-size:14px;
-  }
-  .archive-month{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em;
-    text-transform:uppercase; color:var(--ink-dim);
-    margin:22px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line);
-  }
-  .archive-item{
-    padding:13px 0; border-bottom:1px solid var(--line);
-  }
-  .archive-item:last-child{border-bottom:none;}
-  .archive-item h4{
-    font-family:'Anton',sans-serif; font-weight:400; font-size:17px;
-    margin:0 0 4px; cursor:pointer;
-  }
-  .archive-item h4:hover{color:var(--blue);}
-  .archive-meta{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-dim);
-    margin-bottom:5px;
-  }
-  .archive-item p{
-    margin:6px 0 0; font-size:14px; color:var(--ink-dim);
-    display:none;
-  }
-  .archive-item.open p{display:block;}
-  .news-date{
-    font-family:'IBM Plex Mono',monospace; font-size:10.5px;
-    color:var(--ink-dim); margin-top:10px;
-  }
   .empty-note{color:var(--ink-dim); font-size:14px; padding:14px 2px;}
 
   /* ---------- Section shell ---------- */
@@ -328,7 +295,7 @@
   .legend span{display:inline-flex; align-items:center; gap:6px;}
   .legend i{width:10px; height:10px; border-radius:2px; display:inline-block;}
 
-  /* ---------- Cards grid (results / news) ---------- */
+  /* ---------- Cards grid (results) ---------- */
   .grid{display:grid; gap:14px;}
   .grid.cols-3{grid-template-columns:repeat(3, 1fr);}
   .grid.cols-2{grid-template-columns:repeat(2, 1fr);}
@@ -359,23 +326,6 @@
   }
   .fixture-teams{font-weight:600; font-size:15px;}
 
-  .news-card{
-    background:var(--paper-card); border:1px solid var(--line); border-radius:var(--radius);
-    padding:22px 24px;
-    opacity:0; transform:translateY(10px);
-    transition:opacity .5s ease, transform .5s ease;
-  }
-  .news-card.in-view{opacity:1; transform:translateY(0);}
-  .news-tag{
-    font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600; color:var(--blue);
-    text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;
-  }
-  .news-card h3{font-family:'Anton', sans-serif; font-size:22px; margin:0 0 10px; text-transform:none; letter-spacing:0;}
-  .news-card p{margin:0; color:var(--ink-dim); font-size:14.5px;}
-  @media (prefers-reduced-motion: reduce){
-    .news-card{opacity:1; transform:none; transition:none;}
-  }
-
   footer{padding:36px 0 60px; color:var(--ink-dim); font-size:12.5px;}
   footer .wrap{display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; border-top:1px solid var(--line); padding-top:22px;}
 </style>
@@ -390,7 +340,6 @@
     <nav>
       <a href="#tabell">Tabell</a>
       <a href="#kamper">Kamper</a>
-      <a href="#nyheter">Nyheter</a>
       <button id="themeToggle" class="theme-toggle" aria-label="Bytt mellom lys og mørk modus" title="Bytt visning">
         <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <circle cx="12" cy="12" r="4.2"/>
@@ -418,7 +367,7 @@
   <section class="hero">
     <div class="wrap">
       <h1 class="display">Alt fra<br>Balløya</h1>
-      <p class="lede">Tabell, resultater, kommende kamper og nyheter fra engelske klubber – samlet på norsk gjennom hele sesongen 2026/27.</p>
+      <p class="lede">Tabell, resultater og kommende kamper for engelske klubber – samlet på norsk gjennom hele sesongen 2026/27.</p>
 
       <div class="spotlight" id="spotlight">
         <div>
@@ -486,23 +435,6 @@
 
       <h3 class="sub-head display">Kommende kamper</h3>
       <div class="fixture-list" id="fixturesList"></div>
-    </div>
-  </section>
-
-  <section id="nyheter">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 class="display">Nyheter</h2>
-        <span class="note" id="nyheterNote">Siste 48 timer</span>
-      </div>
-      <div class="grid cols-2" id="newsGrid"></div>
-
-      <button id="archiveToggle" class="more-btn" style="display:none;margin-top:24px;"></button>
-
-      <div id="newsArchive" style="display:none;margin-top:8px;">
-        <input type="search" id="archiveSearch" class="archive-search" placeholder="Søk i arkivet – lag, spiller, overskrift …" aria-label="Søk i nyhetsarkivet">
-        <div id="archiveList"></div>
-      </div>
     </div>
   </section>
 </main>
@@ -941,150 +873,6 @@
   refreshLiveData();
   setInterval(refreshLiveData, 60 * 1000);
 
-  // ---------- Nyheter: front page (72h) + archive ----------
-  const FRESH_WINDOW_MS = 48 * 60 * 60 * 1000;
-  let newsItems = [];
-  let archiveOpen = false;
-
-  function fmtNewsDate(ms) {
-    const d = new Date(ms);
-    return d.toLocaleDateString('no-NO', { day: 'numeric', month: 'long' }) +
-      ' kl. ' + d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function escapeHtml(str) {
-    return String(str || '').replace(/[&<>"']/g, c => (
-      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-    ));
-  }
-
-  function renderNews() {
-    const grid = document.getElementById('newsGrid');
-    const note = document.getElementById('nyheterNote');
-    const toggle = document.getElementById('archiveToggle');
-    if (!grid) return;
-
-    const now = Date.now();
-    const fresh = newsItems.filter(n => now - n.publishedAt < FRESH_WINDOW_MS);
-    const archived = newsItems.filter(n => now - n.publishedAt >= FRESH_WINDOW_MS);
-
-    if (fresh.length) {
-      grid.innerHTML = fresh.map(n => `<div class="news-card in-view">
-        ${n.tag ? `<div class="news-tag">${escapeHtml(n.tag)}</div>` : ''}
-        <h3>${escapeHtml(n.headline)}</h3>
-        <p>${escapeHtml(n.body)}</p>
-        <div class="news-date">${fmtNewsDate(n.publishedAt)}</div>
-      </div>`).join('');
-    } else {
-      grid.innerHTML = '<div class="empty-note">Ingen ferske saker akkurat n\u00e5 \u2013 se arkivet under.</div>';
-    }
-
-    if (note) note.textContent = fresh.length ? 'Siste 48 timer' : 'Arkivet';
-
-    if (toggle) {
-      if (archived.length) {
-        toggle.style.display = 'block';
-        toggle.textContent = archiveOpen
-          ? 'Skjul arkivet'
-          : `Vis arkivet (${archived.length} ${archived.length === 1 ? 'sak' : 'saker'})`;
-      } else {
-        toggle.style.display = 'none';
-      }
-    }
-
-    renderArchive(archived);
-  }
-
-  function renderArchive(archived) {
-    const wrap = document.getElementById('newsArchive');
-    const list = document.getElementById('archiveList');
-    if (!wrap || !list) return;
-    wrap.style.display = archiveOpen ? 'block' : 'none';
-    if (!archiveOpen) return;
-
-    const q = (document.getElementById('archiveSearch')?.value || '').toLowerCase().trim();
-    const filtered = q
-      ? archived.filter(n =>
-          (n.headline + ' ' + n.body + ' ' + (n.tag || '')).toLowerCase().includes(q))
-      : archived;
-
-    if (!filtered.length) {
-      list.innerHTML = '<div class="empty-note">Ingen treff i arkivet.</div>';
-      return;
-    }
-
-    // Group by month so a full season stays navigable.
-    const groups = new Map();
-    filtered.forEach(n => {
-      const d = new Date(n.publishedAt);
-      const key = d.getFullYear() + '-' + String(d.getMonth()).padStart(2, '0');
-      const label = d.toLocaleDateString('no-NO', { month: 'long', year: 'numeric' });
-      if (!groups.has(key)) groups.set(key, { label, items: [] });
-      groups.get(key).items.push(n);
-    });
-
-    const sortedKeys = [...groups.keys()].sort().reverse();
-    list.innerHTML = sortedKeys.map(k => {
-      const g = groups.get(k);
-      return `<div class="archive-month">${escapeHtml(g.label)}</div>` +
-        g.items.map(n => `<div class="archive-item" data-id="${n.id}">
-          <div class="archive-meta">${fmtNewsDate(n.publishedAt)}${n.tag ? ' · ' + escapeHtml(n.tag) : ''}</div>
-          <h4>${escapeHtml(n.headline)}</h4>
-          <p>${escapeHtml(n.body)}</p>
-        </div>`).join('');
-    }).join('');
-
-    list.querySelectorAll('.archive-item h4').forEach(h => {
-      h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
-    });
-  }
-
-  async function loadNews() {
-    try {
-      const res = await fetch('/api/news');
-      const data = await res.json();
-      // Without this, a 503 from the archive would render as "no news at all"
-      // rather than as a failure the reader can tell apart.
-      if (!res.ok || data.error) throw new Error(data.error || 'Kunne ikke hente nyheter');
-      newsItems = (data.items || []).sort((a, b) => b.publishedAt - a.publishedAt);
-      renderNews();
-    } catch (e) {
-      const grid = document.getElementById('newsGrid');
-      if (grid) grid.innerHTML = '<div class="empty-note">Kunne ikke laste nyheter akkurat n\u00e5.</div>';
-    }
-  }
-
-  const archiveToggleEl = document.getElementById('archiveToggle');
-  if (archiveToggleEl) {
-    archiveToggleEl.addEventListener('click', () => {
-      archiveOpen = !archiveOpen;
-      renderNews();
-      if (archiveOpen) document.getElementById('newsArchive').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
-  }
-
-  const archiveSearchEl = document.getElementById('archiveSearch');
-  if (archiveSearchEl) {
-    archiveSearchEl.addEventListener('input', () => {
-      const now = Date.now();
-      renderArchive(newsItems.filter(n => now - n.publishedAt >= FRESH_WINDOW_MS));
-    });
-  }
-
-  loadNews();
-  // Re-check the 72h boundary periodically so items age out without a reload.
-  setInterval(renderNews, 5 * 60 * 1000);
-
-  // Fade in news cards as they enter view
-  if ('IntersectionObserver' in window) {
-    const cards = document.querySelectorAll('.news-card');
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in-view'); io.unobserve(e.target); } });
-    }, { threshold: 0.15 });
-    cards.forEach(c => io.observe(c));
-  } else {
-    document.querySelectorAll('.news-card').forEach(c => c.classList.add('in-view'));
-  }
 </script>
 
 </body>
