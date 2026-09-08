@@ -1043,6 +1043,9 @@
     try {
       const res = await fetch('/api/news');
       const data = await res.json();
+      // Without this, a 503 from the archive would render as "no news at all"
+      // rather than as a failure the reader can tell apart.
+      if (!res.ok || data.error) throw new Error(data.error || 'Kunne ikke hente nyheter');
       newsItems = (data.items || []).sort((a, b) => b.publishedAt - a.publishedAt);
       renderNews();
     } catch (e) {
