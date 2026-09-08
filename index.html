@@ -451,7 +451,51 @@
 
 <script>
   // ---------- Live data rendering ----------
-  const TEAM_ABBR = {}; // fills in as data arrives, used only for the ticker
+  // Ticker abbreviations. Keys are normalised names (lower case, no punctuation),
+  // with the variants the feed is known to use listed alongside each other —
+  // "Newcastle" and "Newcastle United" both have to resolve to NEW.
+  //
+  // Only ambiguous or non-obvious clubs strictly need an entry; everything else
+  // falls through to the rule in tickerAbbr(). The English cups are pulled in
+  // whole, so lower-league clubs turn up in here too.
+  const TEAM_ABBR = {
+    'arsenal': 'ARS',
+    'aston villa': 'AVL',
+    'bournemouth': 'BOU',
+    'brentford': 'BRE',
+    'brighton': 'BHA', 'brighton hove albion': 'BHA',
+    'burnley': 'BUR',
+    'chelsea': 'CHE',
+    'coventry': 'COV', 'coventry city': 'COV',
+    'crystal palace': 'CRY',
+    'everton': 'EVE',
+    'fulham': 'FUL',
+    'hull': 'HUL', 'hull city': 'HUL',
+    'ipswich': 'IPS', 'ipswich town': 'IPS',
+    'leeds': 'LEE', 'leeds united': 'LEE',
+    'liverpool': 'LIV',
+    'manchester city': 'MCI', 'man city': 'MCI',
+    'manchester united': 'MUN', 'man united': 'MUN', 'manchester utd': 'MUN',
+    'newcastle': 'NEW', 'newcastle united': 'NEW',
+    'nottingham forest': 'NFO', 'nottm forest': 'NFO',
+    'sunderland': 'SUN',
+    'tottenham': 'TOT', 'tottenham hotspur': 'TOT', 'spurs': 'TOT',
+    'west ham': 'WHU', 'west ham united': 'WHU',
+    'wolves': 'WOL', 'wolverhampton wanderers': 'WOL',
+    // Clubs outside the current top flight, reachable through the cups
+    'birmingham': 'BIR', 'blackburn': 'BLA', 'bristol city': 'BRC',
+    'cardiff': 'CAR', 'charlton': 'CHA', 'derby': 'DER', 'derby county': 'DER',
+    'leicester': 'LEI', 'luton': 'LUT', 'middlesbrough': 'MID',
+    'millwall': 'MIL', 'norwich': 'NOR', 'oxford united': 'OXF',
+    'plymouth': 'PLY', 'portsmouth': 'POR', 'preston': 'PNE',
+    'qpr': 'QPR', 'queens park rangers': 'QPR',
+    'sheffield united': 'SHU', 'sheffield utd': 'SHU',
+    'sheffield wednesday': 'SHW',
+    'southampton': 'SOU', 'stoke': 'STK', 'stoke city': 'STK',
+    'swansea': 'SWA', 'watford': 'WAT',
+    'west bromwich albion': 'WBA', 'west brom': 'WBA',
+    'wrexham': 'WRE',
+  };
 
   function fmtDate(iso) {
     const d = new Date(iso);
@@ -594,8 +638,32 @@
     ];
   }
 
+  // Strip case, accents, punctuation and a bare FC/AFC so feed spellings match.
+  function normaliseClub(name) {
+    return (name || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      // Apostrophes close up rather than split, so "Nott'm" stays one word.
+      .replace(/['\u2019]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\b(a?fc)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Generic tails carry no identity: dropping them turns "Coventry City" into
+  // COV rather than COV's neighbour, and keeps unmapped clubs sensible.
+  const CLUB_TAIL = /\s+(city|united|utd|town|county|wanderers|albion|rovers|athletic|hotspur)$/;
+
   function tickerAbbr(name) {
-    return (name || '').slice(0, 3).toUpperCase();
+    const key = normaliseClub(name);
+    if (TEAM_ABBR[key]) return TEAM_ABBR[key];
+
+    let base = key;
+    while (CLUB_TAIL.test(base)) base = base.replace(CLUB_TAIL, '');
+    if (TEAM_ABBR[base]) return TEAM_ABBR[base];
+
+    return (base || key || '').slice(0, 3).toUpperCase();
   }
 
   function tickerChip(entry, i) {
