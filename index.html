@@ -138,6 +138,9 @@
     display:flex; align-items:center; gap:8px;
   }
   .ticker-chip .ft{color:var(--gold); font-size:10px; letter-spacing:0.05em;}
+  /* Kick-off time on an upcoming match. The ticker panel is dark in both
+     themes, so this cannot use --ink-dim, which is near-black in light mode. */
+  .ticker-chip .ko{color:rgba(234,240,234,0.62); font-size:10px; letter-spacing:0.05em;}
   @keyframes scroll-ticker{
     from{ transform: translateX(0); }
     to{ transform: translateX(-50%); }
@@ -354,7 +357,7 @@
   </div>
 </header>
 
-<div class="ticker" aria-label="Siste resultater">
+<div class="ticker" aria-label="Siste resultater og dagens kamper">
   <div class="ticker-label" id="tickerLabel">SISTE</div>
   <div class="ticker-viewport">
     <div class="ticker-track" id="tickerTrack"></div>
@@ -548,22 +551,116 @@
   }
 
   let tickerData = [];
+  let lastTicker = null;
 
-  function renderTicker(results) {
-    const track = document.getElementById('tickerTrack');
-    if (!track || !results || !results.length) return;
-    tickerData = results.slice(0, 12);
-    const chips = tickerData.map((r, i) => {
-      const tag = r.status === 'FT' ? '<span class="ft">FT</span>' : '<span class="ft" style="color:var(--gold)">LIVE</span>';
-      const hasScorers = (r.scorers || []).length > 0;
-      const cls = 'ticker-chip' + (hasScorers ? ' has-scorers' : '');
-      const attrs = hasScorers ? ` data-idx="${i}" tabindex="0"` : '';
-      return `<span class="${cls}"${attrs}>${tag} ${r.home.slice(0,3).toUpperCase()} ${r.homeGoals}–${r.awayGoals} ${r.away.slice(0,3).toUpperCase()}</span>`;
+  // The ticker deliberately shows a narrow slice: matches that finished within
+  // the last 24 hours, whatever is in play, and today's remaining kick-offs.
+  const RESULT_TTL_MS = 24 * 60 * 60 * 1000;
+  // The feed carries kick-off time, not full time, so full time is estimated.
+  // Matches decided in extra time run ~30 min longer and age out that much early.
+  const MATCH_LENGTH_MS = 2 * 60 * 60 * 1000;
+  const TICKER_SPEED = 55; // px per second, held constant whatever the chip count
+
+  const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P', 'LIVE', 'BT'];
+  function tickerIsLive(status) {
+    return LIVE_STATUSES.includes(status);
+  }
+
+  function isToday(iso) {
+    const d = new Date(iso), n = new Date();
+    return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  }
+
+  function tickerEntries(results, fixtures) {
+    const now = Date.now();
+    const live = [], recent = [];
+
+    (results || []).forEach(r => {
+      if (tickerIsLive(r.status)) { live.push(r); return; }
+      const endedAt = new Date(r.date).getTime() + MATCH_LENGTH_MS;
+      if (now - endedAt < RESULT_TTL_MS) recent.push(r);
     });
-    const clones = chips.map(c => c.replace('<span class="ticker-chip', '<span aria-hidden="true" class="ticker-chip'));
-    track.innerHTML = chips.concat(clones).join('');
+
+    live.sort((a, b) => new Date(a.date) - new Date(b.date));
+    recent.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const today = (fixtures || [])
+      .filter(f => isToday(f.date))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    return [
+      ...live.map(r => ({ r, kind: 'live' })),
+      ...recent.map(r => ({ r, kind: 'result' })),
+      ...today.map(r => ({ r, kind: 'upcoming' })),
+    ];
+  }
+
+  function tickerAbbr(name) {
+    return (name || '').slice(0, 3).toUpperCase();
+  }
+
+  function tickerChip(entry, i) {
+    const { r, kind } = entry;
+    const hasScorers = (r.scorers || []).length > 0;
+    const cls = 'ticker-chip' + (hasScorers ? ' has-scorers' : '');
+    const attrs = hasScorers ? ` data-idx="${i}" tabindex="0"` : '';
+    if (kind === 'upcoming') {
+      return `<span class="${cls}"${attrs}><span class="ko">${fmtTime(r.date)}</span> ${tickerAbbr(r.home)}–${tickerAbbr(r.away)}</span>`;
+    }
+    const tag = kind === 'live'
+      ? '<span class="ft" style="color:var(--gold)">LIVE</span>'
+      : '<span class="ft">FT</span>';
+    return `<span class="${cls}"${attrs}>${tag} ${tickerAbbr(r.home)} ${r.homeGoals}–${r.awayGoals} ${tickerAbbr(r.away)}</span>`;
+  }
+
+  function paintTicker(entries) {
+    const track = document.getElementById('tickerTrack');
+    if (!track) return;
+    const bar = track.closest('.ticker');
+
+    // Nothing within the window: hide the bar rather than leave it empty.
+    if (!entries.length) {
+      track.innerHTML = '';
+      if (bar) bar.style.display = 'none';
+      return;
+    }
+    if (bar) bar.style.display = '';
+
+    tickerData = entries.map(e => e.r);
+    const chips = entries.map(tickerChip);
+    const hide = (c) => c.replace('<span class="ticker-chip', '<span aria-hidden="true" class="ticker-chip');
+
+    // Measure one pass, then repeat it until it covers the viewport. Without
+    // this a quiet day leaves one chip trailed by a screen-wide empty gap.
+    track.style.animation = 'none';
+    track.innerHTML = chips.join('');
+    const viewport = track.parentElement ? track.parentElement.clientWidth : window.innerWidth;
+    const baseWidth = track.scrollWidth;
+    const reps = baseWidth > 0 ? Math.max(1, Math.ceil(viewport / baseWidth)) : 1;
+
+    let half = chips.slice();
+    for (let i = 1; i < reps; i++) half = half.concat(chips.map(hide));
+    track.innerHTML = half.concat(half.map(hide)).join('');
+
+    // Duration scales with width so two chips and twenty scroll at one speed.
+    track.style.animation = '';
+    track.style.animationDuration = Math.max(12, (track.scrollWidth / 2) / TICKER_SPEED) + 's';
+
     wireTickerPopups(track);
   }
+
+  function renderTicker(results, fixtures) {
+    lastTicker = { results, fixtures };
+    paintTicker(tickerEntries(results, fixtures));
+  }
+
+  // Repeat count depends on viewport width, so recompute when it changes.
+  let tickerResizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(tickerResizeTimer);
+    tickerResizeTimer = setTimeout(() => {
+      if (lastTicker) renderTicker(lastTicker.results, lastTicker.fixtures);
+    }, 200);
+  });
 
   function tickerPopHtml(r) {
     const mk = (side, label) => {
@@ -861,7 +958,7 @@
       renderTabellNote(data.roundInfo);
       renderSubBar();
       applyFilter();
-      renderTicker(data.results || []);
+      renderTicker(data.results || [], data.fixtures || []);
       renderSpotlight(data);
 
       if (statusEl) statusEl.textContent = 'oppdatert ' + fmtTime(data.updated || new Date().toISOString());
