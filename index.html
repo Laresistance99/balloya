@@ -164,31 +164,53 @@
     color:var(--ink-dim);
     margin:0 0 32px;
   }
-  .spotlight{
-    background:var(--paper-card);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:24px 28px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    gap:18px;
-  }
-  .spotlight-tag{
+  /* ---------- Today's matches ---------- */
+  .today-head{display:flex; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap;}
+  .today-tag{
     display:inline-flex; align-items:center; gap:6px;
     background:var(--gold); color:var(--on-gold);
     font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600;
     letter-spacing:0.08em; padding:4px 9px; border-radius:4px;
-    margin-bottom:10px;
   }
-  .spotlight-teams{font-size:26px; margin:0 0 6px;}
-  .spotlight-meta{color:var(--ink-dim); font-size:14px;}
-  .spotlight-kick{
-    font-family:'Anton', sans-serif;
-    font-size:40px;
-    color:var(--blue);
-    white-space:nowrap;
+  .today-note{font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-dim);}
+  /* auto-fill keeps two tiles side by side even on a 375px phone */
+  .today-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(158px, 1fr)); gap:10px;}
+  .tile{
+    background:var(--paper-card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:11px 13px; display:flex; flex-direction:column; gap:7px;
+    transition:border-color .15s ease;
+  }
+  .tile.is-live{border-color:var(--gold);}
+  .tile-top{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.05em;
+  }
+  .tile-when{color:var(--blue); font-weight:600; display:inline-flex; align-items:center; gap:5px;}
+  .tile.is-live .tile-when{color:var(--gold);}
+  .tile.is-done .tile-when{color:var(--ink-dim);}
+  .tile-comp{color:var(--ink-dim); flex:none;}
+  .tile-row{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:13.5px;}
+  .tile-team{font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* Dim the losing side so a finished result reads at a glance */
+  .tile-row.lost .tile-team, .tile-row.lost .tile-score{color:var(--ink-dim); font-weight:500;}
+  .tile-score{font-family:'IBM Plex Mono', monospace; font-weight:600; flex:none;}
+  .live-dot{
+    width:6px; height:6px; border-radius:50%; background:var(--gold); flex:none;
+    animation:live-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes live-pulse{0%,100%{opacity:1;} 50%{opacity:0.25;}}
+  @media (prefers-reduced-motion: reduce){ .live-dot{animation:none;} }
+  @media (hover: hover){ .tile:hover{border-color:var(--blue);} }
+  /* Two tiles across a phone leaves ~115px for a name. Tightening the type and
+     padding gets the longest current club name in without an ellipsis, which
+     matters because the title tooltip is unreachable on touch. */
+  @media (max-width: 480px){
+    .tile{padding:10px 11px;}
+    .tile-row{font-size:12.5px;}
+  }
+  .today-empty{
+    color:var(--ink-dim); font-size:14px; background:var(--paper-card);
+    border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px;
   }
 
   .ticker:hover .ticker-track, .ticker:focus-within .ticker-track{ animation-play-state: paused; }
@@ -381,13 +403,12 @@
       <h1 class="display">Alt fra<br>Balløya</h1>
       <p class="lede">Tabell, resultater og kommende kamper for engelske klubber – samlet på norsk gjennom hele sesongen 2026/27.</p>
 
-      <div class="spotlight" id="spotlight">
-        <div>
-          <div class="spotlight-tag" id="spotlightTag">NESTE KAMP</div>
-          <div class="spotlight-teams display" id="spotlightTeams">Laster …</div>
-          <div class="spotlight-meta" id="spotlightMeta"></div>
+      <div class="today">
+        <div class="today-head">
+          <span class="today-tag" id="todayTag">I DAG</span>
+          <span class="today-note" id="todayNote">Laster …</span>
         </div>
-        <div class="spotlight-kick mono" id="spotlightKick"></div>
+        <div class="today-grid" id="todayGrid"></div>
       </div>
     </div>
   </section>
@@ -827,49 +848,83 @@
 
 
 
-  function renderSpotlight(data) {
-    const teamsEl = document.getElementById('spotlightTeams');
-    const tagEl = document.getElementById('spotlightTag');
-    const metaEl = document.getElementById('spotlightMeta');
-    const kickEl = document.getElementById('spotlightKick');
-    if (!teamsEl) return;
+  // Team names reach innerHTML straight from the feed, so escape them here.
+  function esc(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
 
-    // A match in progress always wins the spotlight; otherwise the soonest kickoff.
-    const liveNow = (data.results || []).find(r => r.status !== 'FT');
+  // The feed gives a status but no elapsed minute, so the badge says which
+  // phase the match is in rather than how far into it we are.
+  const LIVE_LABEL = { HT: 'PAUSE', BT: 'PAUSE', ET: 'EKSTRAOMG.', P: 'STRAFFER' };
+  const DONE_LABEL = { AET: 'E.O.', PEN: 'STR.' };
 
-    if (liveNow) {
-      tagEl.textContent = 'PÅGÅR NÅ';
-      teamsEl.textContent = `${liveNow.home} – ${liveNow.away}`;
-      metaEl.textContent = liveNow.competitionName || 'Premier League';
-      kickEl.textContent = `${liveNow.homeGoals ?? 0}–${liveNow.awayGoals ?? 0}`;
+  function matchTile(m, kind) {
+    const live = kind === 'live', done = kind === 'done';
+    const when = live
+      ? `<span class="live-dot"></span>${LIVE_LABEL[m.status] || 'LIVE'}`
+      : done ? (DONE_LABEL[m.status] || 'FT') : fmtTime(m.date);
+
+    const hg = m.homeGoals, ag = m.awayGoals;
+    const hasScore = (live || done) && hg != null && ag != null;
+    const homeLost = done && hasScore && hg < ag;
+    const awayLost = done && hasScore && ag < hg;
+
+    const side = (team, goals, lost) =>
+      `<div class="tile-row${lost ? ' lost' : ''}">` +
+      `<span class="tile-team" title="${esc(team)}">${esc(team)}</span>` +
+      `<span class="tile-score">${hasScore ? goals : ''}</span></div>`;
+
+    return `<div class="tile${live ? ' is-live' : ''}${done ? ' is-done' : ''}">` +
+      `<div class="tile-top"><span class="tile-when">${when}</span>` +
+      `<span class="tile-comp">${esc(m.competition || 'PL')}</span></div>` +
+      side(m.home, hg, homeLost) + side(m.away, ag, awayLost) + `</div>`;
+  }
+
+  function renderToday(data) {
+    const grid = document.getElementById('todayGrid');
+    const tagEl = document.getElementById('todayTag');
+    const noteEl = document.getElementById('todayNote');
+    if (!grid) return;
+
+    const byTimeAsc = (a, b) => new Date(a.date) - new Date(b.date);
+    const played = (data.results || []).filter(r => isToday(r.date));
+    const live = played.filter(r => tickerIsLive(r.status)).sort(byTimeAsc);
+    const done = played.filter(r => !tickerIsLive(r.status)).sort(byTimeAsc);
+    const upcoming = (data.fixtures || []).filter(f => isToday(f.date)).sort(byTimeAsc);
+
+    // In play first, then what is still to come, then what is already settled.
+    const tiles = [
+      ...live.map(m => matchTile(m, 'live')),
+      ...upcoming.map(m => matchTile(m, 'next')),
+      ...done.map(m => matchTile(m, 'done')),
+    ];
+
+    if (tiles.length) {
+      const total = tiles.length;
+      tagEl.textContent = live.length ? 'PÅGÅR NÅ' : 'I DAG';
+      noteEl.textContent = `${fmtDate(new Date().toISOString())} · ${total} ${total === 1 ? 'kamp' : 'kamper'}`
+        + (live.length ? ` · ${live.length} live` : '');
+      grid.innerHTML = tiles.join('');
       return;
     }
 
-    const allUpcoming = (data.fixtures || [])
+    // Nothing today — point at the next match rather than showing an empty board.
+    const next = (data.fixtures || [])
       .filter(f => new Date(f.date) > new Date())
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
+      .sort(byTimeAsc)[0];
 
-    const next = allUpcoming[0];
     if (!next) {
       tagEl.textContent = 'INGEN KAMPER';
-      teamsEl.textContent = 'Ingen kamper planlagt';
-      metaEl.textContent = 'Kommer tilbake snart';
-      kickEl.textContent = '';
+      noteEl.textContent = '';
+      grid.innerHTML = '<div class="today-empty">Ingen kamper er satt opp akkurat nå.</div>';
       return;
     }
 
-    const d = new Date(next.date);
-    const today = new Date();
-    const isToday = d.toDateString() === today.toDateString();
-    const tomorrow = new Date(today.getTime() + 86400000);
-    const isTomorrow = d.toDateString() === tomorrow.toDateString();
-
-    tagEl.textContent = isToday ? 'I DAG' : (isTomorrow ? 'I MORGEN' : 'NESTE KAMP');
-    teamsEl.textContent = `${next.home} – ${next.away}`;
-    metaEl.textContent = (isToday || isTomorrow)
-      ? (next.competitionName || 'Premier League')
-      : `${fmtDate(next.date)} · ${next.competitionName || 'Premier League'}`;
-    kickEl.textContent = fmtTime(next.date);
+    tagEl.textContent = 'NESTE KAMP';
+    noteEl.textContent = `${fmtDate(next.date)} · ingen kamper i dag`;
+    grid.innerHTML = matchTile(next, 'next');
   }
 
   let latestData = null;
@@ -1054,7 +1109,7 @@
       renderSubBar();
       applyFilter();
       renderTicker(data.results || [], data.fixtures || []);
-      renderSpotlight(data);
+      renderToday(data);
 
       if (statusEl) statusEl.textContent = 'oppdatert ' + fmtTime(data.updated || new Date().toISOString());
     } catch (e) {
