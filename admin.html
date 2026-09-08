@@ -29,6 +29,13 @@
   .row > div{flex:1;}
   button{margin-top:22px;width:100%;padding:14px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:15px;cursor:pointer;}
   button.finish{background:var(--gold);color:var(--on-gold);margin-top:10px;}
+  .tabs{display:flex;gap:8px;margin:0 0 20px;}
+  .tab{
+    flex:1;margin-top:0;padding:10px;border-radius:8px;
+    background:var(--paper-card);color:var(--ink-dim);
+    border:1px solid var(--line);font-size:14px;font-weight:600;cursor:pointer;
+  }
+  .tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
   button.remove{background:transparent;color:#B23A2E;border:1px solid #B23A2E;margin-top:10px;}
   #status{margin-top:14px;font-size:14px;padding:10px 12px;border-radius:8px;display:none;}
   #status.ok{display:block;background:rgba(39,72,255,0.1);color:var(--blue);}
@@ -38,11 +45,18 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Manuell oppdatering</h1>
-  <p class="sub">Velg kampen fra listen (hentet fra nettsiden), skriv inn stillingen, og lagre. Sparer API-kall for kampen du er p&aring;.</p>
+  <h1>Balloya admin</h1>
+
+  <div class="tabs">
+    <button class="tab active" data-panel="scorePanel">Resultater</button>
+    <button class="tab" data-panel="newsPanel">Nyheter</button>
+  </div>
 
   <label for="password">Passord</label>
   <input type="password" id="password" autocomplete="current-password">
+
+  <div id="scorePanel">
+  <p class="sub">Velg kampen fra listen (hentet fra nettsiden), skriv inn stillingen, og lagre. Sparer API-kall for kampen du er p&aring;.</p>
 
   <label for="matchPicker">Kamp</label>
   <select id="matchPicker">
@@ -90,6 +104,30 @@
   <button id="submitBtn">Lagre og vis som live</button>
   <button id="finishBtn" class="finish">Merk kampen som ferdig</button>
   <button id="removeBtn" class="remove">Fjern manuell oppdatering</button>
+  </div>
+
+  <div id="newsPanel" style="display:none;">
+    <p class="sub">Nye saker vises p&aring; forsiden i 48 timer, og g&aring;r deretter automatisk i arkivet.</p>
+
+    <label for="newsTag">Kamp / tema (den lille teksten over overskriften)</label>
+    <input type="text" id="newsTag" placeholder="F.eks. Arsenal &middot; Chelsea">
+
+    <label for="newsHeadline">Overskrift</label>
+    <input type="text" id="newsHeadline" placeholder="F.eks. Sen scoring avgjorde">
+
+    <label for="newsText">Tekst</label>
+    <textarea id="newsText" rows="6" placeholder="Litt mer om kampen &hellip;"></textarea>
+
+    <label for="newsDate">Publiseringstidspunkt (la st&aring; tomt for n&aring;)</label>
+    <input type="datetime-local" id="newsDate">
+
+    <button id="newsSaveBtn">Publiser sak</button>
+
+    <label for="newsPicker" style="margin-top:26px;">Eksisterende saker</label>
+    <select id="newsPicker"><option value="">Laster &hellip;</option></select>
+    <button id="newsUpdateBtn" class="finish">Lagre endringer i valgt sak</button>
+    <button id="newsDeleteBtn" class="remove">Slett valgt sak</button>
+  </div>
 
   <div id="status"></div>
 </div>
@@ -219,6 +257,114 @@ async function removeOverride() {
     statusEl.className = 'err';
   }
 }
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+    document.getElementById('scorePanel').style.display = t.dataset.panel === 'scorePanel' ? 'block' : 'none';
+    document.getElementById('newsPanel').style.display = t.dataset.panel === 'newsPanel' ? 'block' : 'none';
+  });
+});
+
+// ---------- Nyheter ----------
+let newsCache = [];
+
+function newsStatus(msg, ok) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = ok ? 'ok' : 'err';
+}
+
+function toLocalInput(ms) {
+  const d = new Date(ms);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function loadNewsList() {
+  const picker = document.getElementById('newsPicker');
+  try {
+    const res = await fetch('/api/news');
+    const data = await res.json();
+    newsCache = data.items || [];
+    picker.innerHTML = '<option value="">Velg sak \u2026</option>' +
+      newsCache.map(n => {
+        const d = new Date(n.publishedAt).toLocaleDateString('no-NO', { day: 'numeric', month: 'short' });
+        return `<option value="${n.id}">${d} \u2013 ${n.headline}</option>`;
+      }).join('');
+  } catch (e) {
+    picker.innerHTML = '<option value="">Kunne ikke laste saker</option>';
+  }
+}
+
+document.getElementById('newsPicker').addEventListener('change', (e) => {
+  const item = newsCache.find(n => n.id === e.target.value);
+  if (!item) return;
+  document.getElementById('newsTag').value = item.tag || '';
+  document.getElementById('newsHeadline').value = item.headline || '';
+  document.getElementById('newsText').value = item.body || '';
+  document.getElementById('newsDate').value = toLocalInput(item.publishedAt);
+});
+
+async function newsRequest(payload) {
+  const res = await fetch('/api/news', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: document.getElementById('password').value, ...payload }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Noe gikk galt');
+  return data;
+}
+
+document.getElementById('newsSaveBtn').addEventListener('click', async () => {
+  const dateVal = document.getElementById('newsDate').value;
+  try {
+    await newsRequest({
+      action: 'create',
+      tag: document.getElementById('newsTag').value,
+      headline: document.getElementById('newsHeadline').value,
+      text: document.getElementById('newsText').value,
+      publishedAt: dateVal ? new Date(dateVal).toISOString() : null,
+    });
+    newsStatus('Saken er publisert.', true);
+    ['newsTag', 'newsHeadline', 'newsText', 'newsDate'].forEach(id => document.getElementById(id).value = '');
+    loadNewsList();
+  } catch (e) { newsStatus(e.message, false); }
+});
+
+document.getElementById('newsUpdateBtn').addEventListener('click', async () => {
+  const id = document.getElementById('newsPicker').value;
+  if (!id) return newsStatus('Velg en sak fra listen f\u00f8rst.', false);
+  const dateVal = document.getElementById('newsDate').value;
+  try {
+    await newsRequest({
+      action: 'update', id,
+      tag: document.getElementById('newsTag').value,
+      headline: document.getElementById('newsHeadline').value,
+      text: document.getElementById('newsText').value,
+      publishedAt: dateVal ? new Date(dateVal).toISOString() : null,
+    });
+    newsStatus('Endringene er lagret.', true);
+    loadNewsList();
+  } catch (e) { newsStatus(e.message, false); }
+});
+
+document.getElementById('newsDeleteBtn').addEventListener('click', async () => {
+  const id = document.getElementById('newsPicker').value;
+  if (!id) return newsStatus('Velg en sak fra listen f\u00f8rst.', false);
+  const item = newsCache.find(n => n.id === id);
+  if (!confirm(`Slette saken "${item ? item.headline : id}"? Dette kan ikke angres.`)) return;
+  try {
+    await newsRequest({ action: 'delete', id });
+    newsStatus('Saken er slettet.', true);
+    ['newsTag', 'newsHeadline', 'newsText', 'newsDate'].forEach(x => document.getElementById(x).value = '');
+    loadNewsList();
+  } catch (e) { newsStatus(e.message, false); }
+});
+
+loadNewsList();
 
 document.getElementById('submitBtn').addEventListener('click', () => send(false));
 document.getElementById('finishBtn').addEventListener('click', () => send(true));
