@@ -192,7 +192,15 @@ function currentMatch() {
   return matches[Number(val)];
 }
 
-const COMP_NAMES = { PL: 'Premier League', CL: 'Champions League', EL: 'Europa League', CN: 'Conference League' };
+// Keep these in step with COMPETITIONS in netlify/functions/live-data.js.
+const COMP_NAMES = {
+  PL: 'Premier League',
+  FA: 'FA-cupen',
+  EFL: 'Ligacupen',
+  CL: 'Champions League',
+  EL: 'Europa League',
+  CN: 'Conference League',
+};
 
 async function send(finished) {
   const statusEl = document.getElementById('status');
