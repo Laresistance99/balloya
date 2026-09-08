@@ -417,7 +417,6 @@
     <div class="wrap">
       <div class="section-head">
         <h2 class="display">Tabellen</h2>
-        <span class="note" id="tabellNote"></span>
       </div>
       <div class="table-scroll">
         <table>
@@ -979,27 +978,6 @@
     });
   }
 
-  function renderTabellNote(info) {
-    const el = document.getElementById('tabellNote');
-    if (!el) return;
-    if (!info) { el.textContent = ''; return; }
-
-    if (info.liveCount > 0) {
-      el.innerHTML = `Runde ${info.maxPlayed || ''} pågår · <span style="color:var(--gold)">oppdateres live</span>`;
-      return;
-    }
-    if (info.nextToday) {
-      const t = fmtTime(info.nextToday.date);
-      el.textContent = `Etter runde ${info.minPlayed} · oppdateres etter ${info.nextToday.home} – ${info.nextToday.away} kl. ${t}`;
-      return;
-    }
-    if (!info.complete) {
-      el.textContent = `Runde ${info.maxPlayed} pågår · ikke alle lag har spilt like mange kamper`;
-      return;
-    }
-    el.textContent = info.maxPlayed > 0 ? `Etter runde ${info.maxPlayed}` : 'Sesongen har ikke startet';
-  }
-
   function applyFilter() {
     if (!latestData) return;
     const d = latestData;
@@ -1105,7 +1083,6 @@
       latestData = data;
 
       renderStandings(data.standings);
-      renderTabellNote(data.roundInfo);
       renderSubBar();
       applyFilter();
       renderTicker(data.results || [], data.fixtures || []);
