@@ -42,6 +42,13 @@ function newId() {
   return "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+// Stable ids, deliberately not newId(). The seed is rebuilt on every request
+// that finds no blob, so an edit issued against one response has to match the
+// same article in the next one.
+function seedItems() {
+  return SEED.map((s, i) => ({ id: `seed-${i + 1}`, ...s }));
+}
+
 // Swallowing a read error here would make a transient Blobs failure look
 // exactly like an uninitialised store, and we would overwrite real articles
 // with SEED. So errors propagate: only a blob confirmed absent gets seeded.
@@ -54,12 +61,14 @@ async function loadItems(store) {
   }
 
   // A missing key reads back as null. An empty array is a real, deliberate
-  // state — every article deleted — and must not trigger a reseed.
-  if (items === null || items === undefined) {
-    items = SEED.map((s) => ({ id: newId(), ...s }));
-    await store.setJSON(KEY, items);
-    return items;
-  }
+  // state — every article deleted — and must not bring the seed back.
+  //
+  // The seed is returned but never written here: reads stay read-only. Two
+  // cold requests therefore cannot race to create the blob, and a slow one
+  // cannot land its seed on top of an article published in the meantime.
+  // The blob is created by the first admin write, which persists the seed
+  // together with that change.
+  if (items === null || items === undefined) return seedItems();
 
   if (!Array.isArray(items)) {
     throw new Error("Nyhetsarkivet har uventet format");
