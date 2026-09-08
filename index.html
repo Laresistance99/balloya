@@ -122,7 +122,8 @@
   }
   .ticker-viewport{
     padding:10px 0;
-    padding-left:120px;
+    /* Fallback only: paintTicker() recomputes this from the label’s real width. */
+    padding-left:81px;
   }
   .ticker-track{
     display:flex;
@@ -294,6 +295,14 @@
   tr.releg td.pos::before{background:var(--red);}
   td.team{font-weight:600;}
   td.pts{font-family:'IBM Plex Mono', monospace; font-weight:600;}
+  /* On a phone the full table is 660px inside a ~325px column, which pushes
+     Poeng — the column people actually come for — off screen behind a
+     sideways scroll. Drop the four columns you can read off the others. */
+  @media (max-width: 640px){
+    th.opt, td.opt{display:none;}
+    table{min-width:0;}
+    thead th, tbody td{padding-left:10px; padding-right:10px;}
+  }
   .legend{display:flex; gap:18px; margin-top:14px; font-size:12px; color:var(--ink-dim); flex-wrap:wrap;}
   .legend span{display:inline-flex; align-items:center; gap:6px;}
   .legend i{width:10px; height:10px; border-radius:2px; display:inline-block;}
@@ -394,8 +403,8 @@
           <thead>
             <tr>
               <th>#</th><th>Lag</th>
-              <th class="num">K</th><th class="num">S</th><th class="num">U</th><th class="num">T</th>
-              <th class="num">Mål</th><th class="num">+/-</th><th class="num">Poeng</th>
+              <th class="num">K</th><th class="num opt">S</th><th class="num opt">U</th><th class="num opt">T</th>
+              <th class="num opt">Mål</th><th class="num">+/-</th><th class="num">Poeng</th>
             </tr>
           </thead>
           <tbody id="standingsBody">
@@ -521,9 +530,9 @@
       const gdTxt = gd > 0 ? '+' + gd : String(gd);
       const gdColor = gd > 0 ? 'var(--blue)' : (gd < 0 ? 'var(--red)' : 'var(--ink-dim)');
       return `<tr class="${cls}"><td class="pos">${s.rank}</td><td class="team">${s.team}</td>` +
-        `<td class="num">${s.played}</td><td class="num">${s.win}</td>` +
-        `<td class="num">${s.draw}</td><td class="num">${s.lose}</td>` +
-        `<td class="num mono">${gf}–${ga}</td>` +
+        `<td class="num">${s.played}</td><td class="num opt">${s.win}</td>` +
+        `<td class="num opt">${s.draw}</td><td class="num opt">${s.lose}</td>` +
+        `<td class="num mono opt">${gf}–${ga}</td>` +
         `<td class="num mono" style="color:${gdColor}">${gdTxt}</td>` +
         `<td class="num pts">${s.points}</td></tr>`;
     }).join('');
@@ -697,11 +706,18 @@
     const chips = entries.map(tickerChip);
     const hide = (c) => c.replace('<span class="ticker-chip', '<span aria-hidden="true" class="ticker-chip');
 
+    // The label is absolutely positioned, so the viewport's left padding has to
+    // clear it by hand. Hardcoding it left a 55px hole on phones, where the
+    // label is 65px wide rather than the 120px the desktop layout assumed.
+    const viewportEl = track.parentElement;
+    const label = bar ? bar.querySelector('.ticker-label') : null;
+    if (viewportEl && label) viewportEl.style.paddingLeft = (label.offsetWidth + 16) + 'px';
+
     // Measure one pass, then repeat it until it covers the viewport. Without
     // this a quiet day leaves one chip trailed by a screen-wide empty gap.
     track.style.animation = 'none';
     track.innerHTML = chips.join('');
-    const viewport = track.parentElement ? track.parentElement.clientWidth : window.innerWidth;
+    const viewport = viewportEl ? viewportEl.clientWidth : window.innerWidth;
     const baseWidth = track.scrollWidth;
     const reps = baseWidth > 0 ? Math.max(1, Math.ceil(viewport / baseWidth)) : 1;
 
