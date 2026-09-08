@@ -141,12 +141,15 @@ async function loadMatches() {
     const res = await fetch('/api/live-data?v=4');
     const data = await res.json();
     matches = [];
-    (data.results || []).forEach(r => matches.push({ home: r.home, away: r.away, competition: 'PL', label: r.home + ' - ' + r.away + ' (PL)' }));
-    (data.fixtures || []).forEach(r => matches.push({ home: r.home, away: r.away, competition: 'PL', label: r.home + ' - ' + r.away + ' (PL, kommende)' }));
-    if (data.europa) {
-      (data.europa.results || []).forEach(r => matches.push({ home: r.home, away: r.away, competition: r.competition, label: r.home + ' - ' + r.away + ' (' + r.competition + ')' }));
-      (data.europa.fixtures || []).forEach(r => matches.push({ home: r.home, away: r.away, competition: r.competition, label: r.home + ' - ' + r.away + ' (' + r.competition + ', kommende)' }));
-    }
+    // results and fixtures already carry every competition, each tagged with its own code.
+    (data.results || []).forEach(r => matches.push({
+      home: r.home, away: r.away, competition: r.competition || 'PL',
+      label: r.home + ' - ' + r.away + ' (' + (r.competition || 'PL') + ')',
+    }));
+    (data.fixtures || []).forEach(r => matches.push({
+      home: r.home, away: r.away, competition: r.competition || 'PL',
+      label: r.home + ' - ' + r.away + ' (' + (r.competition || 'PL') + ', kommende)',
+    }));
     picker.innerHTML = '<option value="">Velg kamp...</option>' +
       matches.map((m, i) => '<option value="' + i + '">' + m.label + '</option>').join('') +
       '<option value="__manual__">Annet (skriv inn selv)</option>';
