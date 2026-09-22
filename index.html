@@ -493,7 +493,6 @@
     <div class="wrap">
       <div class="section-head">
         <h2 class="display">Kamper</h2>
-        <span class="note" id="kamperNote"></span>
       </div>
 
       <div class="filter-bar" role="tablist" aria-label="Filtrer turnering">
@@ -1001,12 +1000,6 @@
   let activeSub = 'alle';
   let roundIndex = null;   // null = pick the live or next round automatically
 
-  const GROUP_LABELS = {
-    liga: 'Premier League',
-    cup: 'FA-cupen og Ligacupen',
-    europa: 'Europeiske turneringer',
-  };
-
   function matchesFilter(item) {
     const g = item.group || 'liga';
     if (g !== activeFilter) return false;
@@ -1166,18 +1159,6 @@
       const base = btn.textContent.replace(/\s*\d+$/, '').trim();
       btn.innerHTML = base + (counts[f] ? ` <span class="count">${counts[f]}</span>` : '');
     });
-
-    const note = document.getElementById('kamperNote');
-    if (note) {
-      const comp = (d.competitions || []).find(c => c.code === activeSub);
-      if (comp && (comp.teams || []).length) {
-        note.textContent = `${comp.name} \u00b7 engelske lag: ${comp.teams.join(', ')}`;
-      } else if (comp) {
-        note.textContent = `${comp.name} \u00b7 ingen engelske lag med i \u00e5r`;
-      } else {
-        note.textContent = GROUP_LABELS[activeFilter];
-      }
-    }
   }
 
   function stepRound(delta) {
