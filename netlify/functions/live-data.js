@@ -10,9 +10,9 @@ const COMPETITIONS = [
   { id: 39,  code: "PL",  name: "Premier League",    group: "liga",   standings: true,  scope: "all" },
   { id: 45,  code: "FA",  name: "FA-cupen",          group: "cup",    standings: false, scope: "all" },
   { id: 48,  code: "EFL", name: "Ligacupen",         group: "cup",    standings: false, scope: "all" },
-  { id: 2,   code: "CL",  name: "Champions League",  group: "europa", standings: true,  scope: "english" },
-  { id: 3,   code: "EL",  name: "Europa League",     group: "europa", standings: true,  scope: "english" },
-  { id: 848, code: "CN",  name: "Conference League", group: "europa", standings: true,  scope: "english" },
+  { id: 2,   code: "CL",  name: "Champions League",  group: "europa", standings: false, scope: "english" },
+  { id: 3,   code: "EL",  name: "Europa League",     group: "europa", standings: false, scope: "english" },
+  { id: 848, code: "CN",  name: "Conference League", group: "europa", standings: false, scope: "english" },
 ];
 
 // Leagues we show a table for but deliberately pull no matches from. Putting
@@ -263,34 +263,6 @@ export default async (req, context) => {
       tables[r.comp.code] = { name: r.comp.name, rows: rows.map(shapeStandingRow) };
     }
 
-    const euroStandings = [];
-    for (const r of standingsResults) {
-      if (!r || r.comp.code === "PL") continue;
-      for (const g of (r.json?.response?.[0]?.league?.standings || [])) {
-        for (const s of g) {
-          if (englishClubs.has(s.team.name)) {
-            euroStandings.push({
-              team: s.team.name, rank: s.rank, played: s.all.played, points: s.points,
-              competition: r.comp.code, competitionName: r.comp.name, group: r.comp.group,
-            });
-          }
-        }
-      }
-    }
-
-    const today = new Date();
-    const playedCounts = standings.map((s) => s.played);
-    const minPlayed = playedCounts.length ? Math.min(...playedCounts) : 0;
-    const maxPlayed = playedCounts.length ? Math.max(...playedCounts) : 0;
-    const plToday = fixtures.filter((f) => f.competition === "PL" && new Date(f.date).toDateString() === today.toDateString());
-    const plLive = results.filter((r) => r.competition === "PL" && statusIsLive(r.status));
-    const roundInfo = {
-      minPlayed, maxPlayed,
-      complete: minPlayed === maxPlayed,
-      liveCount: plLive.length,
-      nextToday: plToday.length ? { home: plToday[0].home, away: plToday[0].away, date: plToday[0].date } : null,
-    };
-
     const competitions = COMPETITIONS.map((c) => ({
       code: c.code, name: c.name, group: c.group,
       teams: [...(participation[c.code] || [])].sort(),
@@ -311,7 +283,7 @@ export default async (req, context) => {
     else cacheSeconds = 28800;
 
     return new Response(
-      JSON.stringify({ standings, tables, sources, results, fixtures, euroStandings, competitions, roundInfo, updated: new Date().toISOString() }),
+      JSON.stringify({ standings, tables, sources, results, fixtures, competitions, updated: new Date().toISOString() }),
       {
         headers: {
           "content-type": "application/json",
