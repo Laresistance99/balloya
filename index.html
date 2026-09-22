@@ -357,6 +357,67 @@
   .result-row .score{font-family:'Anton', sans-serif; font-size:22px; color:var(--blue); white-space:nowrap; padding:0 8px;}
 
   .fixture-list{border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-card); overflow:hidden;}
+  /* ---------- Round navigator ---------- */
+  .round-nav{
+    display:flex; align-items:center; gap:14px; margin:0 0 18px;
+    background:var(--paper-card); border:1px solid var(--line);
+    border-radius:var(--radius); padding:12px 14px;
+  }
+  .round-title{flex:1; text-align:center; min-width:0;}
+  .round-name{font-size:19px; line-height:1.15;}
+  .round-dates{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-dim); margin-top:3px;}
+  .round-arrow{
+    flex:none; width:38px; height:38px; padding:0;
+    border:1px solid var(--line); border-radius:8px;
+    background:var(--paper); color:var(--blue);
+    font-size:20px; line-height:1; cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .round-arrow:hover:not(:disabled){border-color:var(--blue);}
+  .round-arrow:disabled{color:var(--ink-dim); opacity:0.4; cursor:default;}
+
+  .round-day + .round-day{margin-top:22px;}
+  .round-day-label{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--ink-dim);
+    margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line);
+  }
+  .match-row{
+    position:relative;
+    display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px;
+    background:var(--paper-card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:12px 14px;
+  }
+  .match-row + .match-row{margin-top:8px;}
+  .match-row.has-scorers{cursor:pointer;}
+  .match-row.open .scorer-pop{opacity:1; visibility:visible; transform:translateY(0);}
+  @media (hover: hover){
+    .match-row.has-scorers:hover .scorer-pop{opacity:1; visibility:visible; transform:translateY(0);}
+  }
+  .match-side{font-weight:600; font-size:14.5px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .match-side.away{text-align:right;}
+  .match-mid{
+    flex:none; text-align:center; min-width:62px;
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:15px;
+  }
+  .match-mid.upcoming{color:var(--blue); font-size:13.5px;}
+  .match-tag{
+    display:block; font-size:9.5px; letter-spacing:0.06em; font-weight:600;
+    color:var(--ink-dim); margin-top:2px;
+  }
+  .match-tag.live{color:var(--gold);}
+  /* A cup or European round can mix competitions, so each row says which */
+  .match-comp{
+    grid-column:1 / -1; font-family:'IBM Plex Mono',monospace;
+    font-size:10px; letter-spacing:0.05em; color:var(--ink-dim); margin-bottom:2px;
+  }
+  @media (max-width: 480px){
+    .match-row{padding:11px 12px; gap:8px;}
+    .match-side{font-size:13px;}
+    .match-mid{min-width:54px; font-size:14px;}
+    .round-name{font-size:17px;}
+  }
+
   .fixture-row{display:flex; align-items:center; gap:16px; padding:14px 18px;}
   .fixture-row + .fixture-row{border-top:1px solid var(--line);}
   .fixture-time{
@@ -436,8 +497,7 @@
       </div>
 
       <div class="filter-bar" role="tablist" aria-label="Filtrer turnering">
-        <button class="filter-pill active" role="tab" aria-selected="true" data-filter="alle">Alle</button>
-        <button class="filter-pill" role="tab" aria-selected="false" data-filter="liga">Premier League</button>
+        <button class="filter-pill active" role="tab" aria-selected="true" data-filter="liga">Premier League</button>
         <button class="filter-pill" role="tab" aria-selected="false" data-filter="cup">Engelske cuper</button>
         <button class="filter-pill" role="tab" aria-selected="false" data-filter="europa">Europa</button>
       </div>
@@ -449,13 +509,16 @@
         <div id="europaStandings" class="grid cols-3" style="margin-bottom:26px;"></div>
       </div>
 
-      <h3 class="sub-head display">Resultater</h3>
-      <div id="resultsGrid" class="grid cols-3" style="margin-bottom:26px;"></div>
+      <div class="round-nav" id="roundNav" style="display:none;">
+        <button class="round-arrow" id="roundPrev" aria-label="Forrige runde">‹</button>
+        <div class="round-title">
+          <div class="round-name display" id="roundName"></div>
+          <div class="round-dates" id="roundDates"></div>
+        </div>
+        <button class="round-arrow" id="roundNext" aria-label="Neste runde">›</button>
+      </div>
 
-      <button id="moreResults" class="more-btn" style="display:none;">Vis flere resultater</button>
-
-      <h3 class="sub-head display">Kommende kamper</h3>
-      <div class="fixture-list" id="fixturesList"></div>
+      <div id="roundMatches"></div>
     </div>
   </section>
 </main>
@@ -628,30 +691,11 @@
     return `<div class="scorer-pop">${mk('home', r.home)}${mk('away', r.away)}</div>`;
   }
 
-  function renderResults(results, limit) {
-    const grid = document.getElementById('resultsGrid');
-    if (!grid) return;
-    if (!results || !results.length) {
-      grid.innerHTML = '<div class="empty-note">Ingen resultater i denne kategorien enn\u00e5.</div>';
-      return;
-    }
-    grid.innerHTML = results.slice(0, limit || 15).map(r => {
-      const live = r.status !== 'FT';
-      const hasScorers = (r.scorers || []).length > 0;
-      return `<div class="result-card${hasScorers ? ' has-scorers' : ''}"${hasScorers ? ' tabindex="0"' : ''}>
-        <div class="date">${fmtDate(r.date)} · ${r.competitionName || 'Premier League'}${r.round ? ' · ' + r.round : ''}${live ? ' · <span style="color:var(--gold)">LIVE</span>' : ''}${r.manual ? ' · manuelt' : ''}</div>
-        <div class="result-row"><span class="side">${r.home}</span><span class="score mono">${r.homeGoals ?? '–'}–${r.awayGoals ?? '–'}</span><span class="side away">${r.away}</span></div>
-        ${hasScorers ? '<div class="tap-hint">Trykk for målscorere</div>' + scorerPopHtml(r) : ''}
-      </div>`;
-    }).join('');
-    wireScorerPopups(grid);
-  }
-
   function wireScorerPopups(container) {
-    container.querySelectorAll('.result-card.has-scorers').forEach(card => {
+    container.querySelectorAll('.has-scorers').forEach(card => {
       card.addEventListener('click', (e) => {
         const wasOpen = card.classList.contains('open');
-        container.querySelectorAll('.result-card.open').forEach(c => c.classList.remove('open'));
+        container.querySelectorAll('.has-scorers.open').forEach(c => c.classList.remove('open'));
         if (!wasOpen) card.classList.add('open');
         e.stopPropagation();
       });
@@ -663,24 +707,8 @@
   }
 
   document.addEventListener('click', () => {
-    document.querySelectorAll('.result-card.open').forEach(c => c.classList.remove('open'));
+    document.querySelectorAll('.has-scorers.open').forEach(c => c.classList.remove('open'));
   });
-
-  function renderFixtures(fixtures) {
-    const list = document.getElementById('fixturesList');
-    if (!list) return;
-    if (!fixtures || !fixtures.length) {
-      list.innerHTML = '<div class="empty-note">Ingen kommende kamper i denne kategorien akkurat n\u00e5.</div>';
-      return;
-    }
-    list.innerHTML = fixtures.slice(0, 14).map(f =>
-      `<div class="fixture-row" style="flex-wrap:wrap;">
-        <span class="fixture-time">${fmtDate(f.date)} ${fmtTime(f.date)}</span>
-        <span class="fixture-teams">${f.home} \u2013 ${f.away}</span>
-        <span class="ts" style="margin-left:auto;">${f.competitionName || 'Premier League'}${f.round ? ' · ' + f.round : ''}</span>
-      </div>`
-    ).join('');
-  }
 
   let tickerData = [];
   let lastTicker = null;
@@ -986,12 +1014,11 @@
   }
 
   let latestData = null;
-  let activeFilter = 'alle';
+  let activeFilter = 'liga';
   let activeSub = 'alle';
-  let resultLimit = 15;
+  let roundIndex = null;   // null = pick the live or next round automatically
 
   const GROUP_LABELS = {
-    alle: 'Alle turneringer',
     liga: 'Premier League',
     cup: 'FA-cupen og Ligacupen',
     europa: 'Europeiske turneringer',
@@ -999,7 +1026,7 @@
 
   function matchesFilter(item) {
     const g = item.group || 'liga';
-    if (activeFilter !== 'alle' && g !== activeFilter) return false;
+    if (g !== activeFilter) return false;
     if (activeSub !== 'alle' && item.competition !== activeSub) return false;
     return true;
   }
@@ -1030,42 +1057,130 @@
     bar.querySelectorAll('.filter-pill').forEach(btn => {
       btn.addEventListener('click', () => {
         activeSub = btn.dataset.sub;
-        resultLimit = 15;
+        roundIndex = null;
         renderSubBar();
         applyFilter();
       });
     });
   }
 
+  function roundKeyOf(m) {
+    return (m.competition || 'PL') + '|' + (m.round || '');
+  }
+
+  // Rounds are ordered by their earliest kick-off rather than by name. That
+  // works for a numbered league matchweek and a cup stage alike, so no
+  // hardcoded knockout order is needed.
+  function buildRounds(d) {
+    const all = [...(d.results || []), ...(d.fixtures || [])].filter(matchesFilter);
+    const map = new Map();
+    for (const m of all) {
+      const key = roundKeyOf(m);
+      if (!map.has(key)) {
+        map.set(key, { key, competition: m.competition, competitionName: m.competitionName, round: m.round, matches: [] });
+      }
+      map.get(key).matches.push(m);
+    }
+    const rounds = [...map.values()];
+    for (const r of rounds) {
+      r.matches.sort((a, b) => new Date(a.date) - new Date(b.date));
+      r.start = new Date(r.matches[0].date).getTime();
+      r.end = new Date(r.matches[r.matches.length - 1].date).getTime();
+    }
+    rounds.sort((a, b) => a.start - b.start);
+    return rounds;
+  }
+
+  // A round stays current while it runs and for three hours after its last
+  // kick-off, so the view does not jump ahead in the middle of a Sunday.
+  function defaultRoundIndex(rounds) {
+    const now = Date.now();
+    let i = rounds.findIndex(r => now >= r.start && now <= r.end + 3 * 60 * 60 * 1000);
+    if (i !== -1) return i;
+    i = rounds.findIndex(r => r.start > now);
+    if (i !== -1) return i;
+    return Math.max(0, rounds.length - 1);
+  }
+
+  function matchRowHtml(m, showComp) {
+    const live = tickerIsLive(m.status);
+    const played = live || m.homeGoals != null;
+    const hasScorers = (m.scorers || []).length > 0;
+    const mid = played ? `${m.homeGoals ?? '\u2013'}\u2013${m.awayGoals ?? '\u2013'}` : fmtTime(m.date);
+    const tag = live
+      ? `<span class="match-tag live">${LIVE_LABEL[m.status] || 'LIVE'}</span>`
+      : played ? `<span class="match-tag">${DONE_LABEL[m.status] || 'FT'}</span>` : '';
+    return `<div class="match-row${hasScorers ? ' has-scorers' : ''}"${hasScorers ? ' tabindex="0"' : ''}>` +
+      (showComp ? `<div class="match-comp">${esc(m.competitionName || '')}${m.round ? ' \u00b7 ' + esc(m.round) : ''}</div>` : '') +
+      `<span class="match-side">${esc(m.home)}</span>` +
+      `<span class="match-mid${played ? '' : ' upcoming'}">${mid}${tag}</span>` +
+      `<span class="match-side away">${esc(m.away)}</span>` +
+      (hasScorers ? scorerPopHtml(m) : '') + `</div>`;
+  }
+
+  function renderRound(rounds, idx) {
+    const nav = document.getElementById('roundNav');
+    const host = document.getElementById('roundMatches');
+    if (!host) return;
+
+    if (!rounds.length) {
+      if (nav) nav.style.display = 'none';
+      host.innerHTML = '<div class="empty-note">Ingen kamper i denne kategorien enn\u00e5.</div>';
+      return;
+    }
+    if (nav) nav.style.display = 'flex';
+
+    const r = rounds[idx];
+    // One competition needs no per-row label; "begge cuper" and the European
+    // view can mix competitions, so there each row repeats its own.
+    const single = new Set(rounds.map(x => x.competition)).size === 1;
+    document.getElementById('roundName').textContent =
+      single ? (r.round || r.competitionName || '') : `${r.competitionName || ''} \u00b7 ${r.round || ''}`;
+
+    const first = fmtDate(r.matches[0].date);
+    const last = fmtDate(r.matches[r.matches.length - 1].date);
+    document.getElementById('roundDates').textContent = first === last ? first : `${first} \u2013 ${last}`;
+
+    const prev = document.getElementById('roundPrev');
+    const next = document.getElementById('roundNext');
+    if (prev) prev.disabled = idx <= 0;
+    if (next) next.disabled = idx >= rounds.length - 1;
+
+    const days = new Map();
+    for (const m of r.matches) {
+      const d = fmtDate(m.date);
+      if (!days.has(d)) days.set(d, []);
+      days.get(d).push(m);
+    }
+    host.innerHTML = [...days.entries()].map(([label, list]) =>
+      `<div class="round-day"><div class="round-day-label">${label}</div>` +
+      list.map(m => matchRowHtml(m, !single)).join('') + `</div>`
+    ).join('');
+
+    wireScorerPopups(host);
+  }
+
   function applyFilter() {
     if (!latestData) return;
     const d = latestData;
 
-    const filteredResults = (d.results || []).filter(matchesFilter);
-    renderResults(filteredResults, resultLimit);
-    renderFixtures((d.fixtures || []).filter(matchesFilter));
-
-    const moreBtn = document.getElementById('moreResults');
-    if (moreBtn) {
-      const remaining = filteredResults.length - resultLimit;
-      moreBtn.style.display = remaining > 0 ? 'block' : 'none';
-      moreBtn.textContent = remaining > 0
-        ? `Vis flere resultater (${remaining} igjen)`
-        : 'Vis flere resultater';
+    const rounds = buildRounds(d);
+    if (roundIndex === null || roundIndex < 0 || roundIndex >= rounds.length) {
+      roundIndex = defaultRoundIndex(rounds);
     }
+    renderRound(rounds, roundIndex);
 
     const euro = (d.euroStandings || []).filter(matchesFilter);
-    const showEuro = (activeFilter === 'europa' || activeFilter === 'alle') && euro.length > 0;
+    const showEuro = activeFilter === 'europa' && euro.length > 0;
     const wrap = document.getElementById('europaStandingsWrap');
     if (wrap) {
       wrap.style.display = showEuro ? 'block' : 'none';
       if (showEuro) renderEuropaStandings(euro);
     }
 
-    const counts = { alle: 0, liga: 0, cup: 0, europa: 0 };
+    const counts = { liga: 0, cup: 0, europa: 0 };
     [...(d.results || []), ...(d.fixtures || [])].forEach(m => {
       const g = m.group || 'liga';
-      counts.alle++;
       if (counts[g] !== undefined) counts[g]++;
     });
     document.querySelectorAll('.filter-bar:not(.sub-bar) .filter-pill').forEach(btn => {
@@ -1078,20 +1193,32 @@
     if (note) {
       const comp = (d.competitions || []).find(c => c.code === activeSub);
       if (comp && (comp.teams || []).length) {
-        note.textContent = `${comp.name} · engelske lag: ${comp.teams.join(', ')}`;
+        note.textContent = `${comp.name} \u00b7 engelske lag: ${comp.teams.join(', ')}`;
       } else if (comp) {
-        note.textContent = `${comp.name} · ingen engelske lag med i \u00e5r`;
+        note.textContent = `${comp.name} \u00b7 ingen engelske lag med i \u00e5r`;
       } else {
         note.textContent = GROUP_LABELS[activeFilter];
       }
     }
   }
 
+  function stepRound(delta) {
+    const rounds = buildRounds(latestData || {});
+    const base = roundIndex === null ? defaultRoundIndex(rounds) : roundIndex;
+    const next = base + delta;
+    if (next < 0 || next >= rounds.length) return;
+    roundIndex = next;
+    renderRound(rounds, roundIndex);
+  }
+
+  document.getElementById('roundPrev').addEventListener('click', () => stepRound(-1));
+  document.getElementById('roundNext').addEventListener('click', () => stepRound(1));
+
   document.querySelectorAll('.filter-bar:not(.sub-bar) .filter-pill').forEach(btn => {
     btn.addEventListener('click', () => {
       activeFilter = btn.dataset.filter;
       activeSub = 'alle';
-      resultLimit = 15;
+      roundIndex = null;
       document.querySelectorAll('.filter-bar:not(.sub-bar) .filter-pill').forEach(b => {
         const on = b === btn;
         b.classList.toggle('active', on);
@@ -1124,11 +1251,6 @@
     };
     if (mq.addEventListener) mq.addEventListener('change', onSystemChange);
     else if (mq.addListener) mq.addListener(onSystemChange);
-  }
-
-  const moreBtnEl = document.getElementById('moreResults');
-  if (moreBtnEl) {
-    moreBtnEl.addEventListener('click', () => { resultLimit += 30; applyFilter(); });
   }
 
   async function refreshLiveData() {
