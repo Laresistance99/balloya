@@ -103,7 +103,7 @@ let matches = [];
 async function loadMatches() {
   const picker = document.getElementById('matchPicker');
   try {
-    const res = await fetch('/api/live-data?v=5');
+    const res = await fetch('/api/live-data?v=6');
     const data = await res.json();
     matches = [];
     // results and fixtures already carry every competition, each tagged with its own code.
