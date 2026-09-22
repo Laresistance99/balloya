@@ -10,9 +10,9 @@ const COMPETITIONS = [
   { id: 39,  code: "PL",  name: "Premier League",    group: "liga",   standings: true,  scope: "all" },
   { id: 45,  code: "FA",  name: "FA-cupen",          group: "cup",    standings: false, scope: "all" },
   { id: 48,  code: "EFL", name: "Ligacupen",         group: "cup",    standings: false, scope: "all" },
-  { id: 2,   code: "CL",  name: "Champions League",  group: "europa", standings: false, scope: "english" },
-  { id: 3,   code: "EL",  name: "Europa League",     group: "europa", standings: false, scope: "english" },
-  { id: 848, code: "CN",  name: "Conference League", group: "europa", standings: false, scope: "english" },
+  { id: 2,   code: "CL",  name: "Champions League",  group: "europa", standings: true,  scope: "english" },
+  { id: 3,   code: "EL",  name: "Europa League",     group: "europa", standings: true,  scope: "english" },
+  { id: 848, code: "CN",  name: "Conference League", group: "europa", standings: true,  scope: "english" },
 ];
 
 // Leagues we show a table for but deliberately pull no matches from. Putting
@@ -251,15 +251,22 @@ export default async (req, context) => {
 
     const standings = plTable.map(shapeStandingRow);
 
-    // Table-only leagues, keyed by code so the page can pick out what it shows.
-    // An empty array means the call failed or the league had no table yet; the
-    // page leaves that block out rather than rendering an empty shell.
+    // Every table other than the Premier League, keyed by code so the page can
+    // pick out the one it is showing. An empty array means the call failed or
+    // the league had no table yet; the page leaves that button out rather than
+    // offering an empty table.
     const tables = {};
-    for (const r of tableOnlyResults) {
-      if (!r) continue;
+    for (const r of [...standingsResults, ...tableOnlyResults]) {
+      if (!r || r.comp.code === "PL") continue;
       const league = r.json?.response?.[0]?.league;
-      const rows = league?.standings?.[0] || [];
-      if (league) sources[r.comp.code] = { id: league.id, name: league.name, season: league.season };
+      const groups = league?.standings || [];
+      // The European league phase is one table of 36. groups is reported so an
+      // old-style group stage, which would arrive as eight separate arrays, is
+      // visible in the payload instead of silently showing only the first.
+      const rows = groups[0] || [];
+      if (league) {
+        sources[r.comp.code] = { id: league.id, name: league.name, season: league.season, groups: groups.length };
+      }
       tables[r.comp.code] = { name: r.comp.name, rows: rows.map(shapeStandingRow) };
     }
 

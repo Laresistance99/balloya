@@ -485,6 +485,7 @@
       <div class="section-head">
         <h2 class="display">Tabellen</h2>
       </div>
+      <div class="filter-bar" id="tableBar" role="tablist" aria-label="Velg tabell"></div>
       <div id="tables"><div class="empty-note">Laster tabell …</div></div>
     </div>
   </section>
@@ -596,14 +597,33 @@
     },
     {
       key: 'ELC', name: 'Championship',
-      rows: d => (d.tables && d.tables.ELC && d.tables.ELC.rows) || [],
+      rows: d => tableRows(d, 'ELC'),
       zones: [
         { upto: 2, cls: 'top4', label: 'Direkte opprykk', color: 'var(--blue)' },
         { upto: 6, cls: 'playoff', label: 'Playoff om opprykk', color: 'var(--gold)' },
       ],
       relegation: { count: 3, label: 'Nedrykksplass' },
     },
+    // The European league phase is a single table of 36: the top eight go
+    // straight through, 9-24 meet in a play-off, the rest are out.
+    ...['CL', 'EL', 'CN'].map(code => ({
+      key: code,
+      name: { CL: 'Champions League', EL: 'Europa League', CN: 'Conference League' }[code],
+      rows: d => tableRows(d, code),
+      zones: [
+        { upto: 8, cls: 'top4', label: 'Videre til 8-delsfinale', color: 'var(--blue)' },
+        { upto: 24, cls: 'playoff', label: 'Playoff', color: 'var(--gold)' },
+      ],
+      relegation: { count: 12, label: 'Ute av turneringen' },
+    })),
   ];
+
+  function tableRows(d, code) {
+    return (d.tables && d.tables[code] && d.tables[code].rows) || [];
+  }
+
+  // Which table the buttons are showing.
+  let activeTable = 'PL';
 
   // Survives the 60s refresh, so an expanded table does not snap shut.
   const tableOpen = {};
@@ -631,7 +651,6 @@
       + `<span><i style="background:var(--red)"></i> ${spec.relegation.label}</span>`;
 
     return `<div class="table-block${open ? ' is-open' : ''}" data-table="${spec.key}">
-      <h3 class="sub-head display">${esc(spec.name)}</h3>
       <div class="table-scroll">
         <table>
           <thead><tr>
@@ -651,17 +670,38 @@
 
   function renderTables(data) {
     const host = document.getElementById('tables');
+    const bar = document.getElementById('tableBar');
     if (!host) return;
 
-    // A league with no rows is left out rather than rendered as an empty shell.
-    const blocks = TABLE_SPECS
+    // A league with no rows gets no button rather than an empty table.
+    const available = TABLE_SPECS
       .map(spec => ({ spec, rows: spec.rows(data) }))
-      .filter(t => t.rows.length)
-      .map(t => tableBlockHtml(t.spec, t.rows));
+      .filter(t => t.rows.length);
 
-    host.innerHTML = blocks.length
-      ? blocks.join('')
-      : '<div class="empty-note">Tabellen er ikke tilgjengelig akkurat nå.</div>';
+    if (!available.length) {
+      if (bar) { bar.style.display = 'none'; bar.innerHTML = ''; }
+      host.innerHTML = '<div class="empty-note">Tabellen er ikke tilgjengelig akkurat nå.</div>';
+      return;
+    }
+
+    if (!available.some(t => t.spec.key === activeTable)) activeTable = available[0].spec.key;
+
+    if (bar) {
+      bar.style.display = available.length > 1 ? 'flex' : 'none';
+      bar.innerHTML = available.map(({ spec }) =>
+        `<button class="filter-pill${spec.key === activeTable ? ' active' : ''}" role="tab"` +
+        ` aria-selected="${spec.key === activeTable}" data-table-key="${spec.key}">${esc(spec.name)}</button>`
+      ).join('');
+      bar.querySelectorAll('.filter-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeTable = btn.dataset.tableKey;
+          renderTables(latestData || data);
+        });
+      });
+    }
+
+    const shown = available.find(t => t.spec.key === activeTable);
+    host.innerHTML = tableBlockHtml(shown.spec, shown.rows);
 
     host.querySelectorAll('.table-toggle').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1217,7 +1257,7 @@
     try {
       // The version tag gives us a fresh cache key whenever the backend changes,
       // so a bad cached response can never outlive a deploy. Bump it on backend edits.
-      const res = await fetch('/api/live-data?v=6');
+      const res = await fetch('/api/live-data?v=7');
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       latestData = data;
