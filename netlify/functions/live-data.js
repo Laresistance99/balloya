@@ -166,8 +166,15 @@ export default async (req, context) => {
       paced(tableOnlyTasks),
     ]);
 
-    const plTable = standingsResults.find((r) => r && r.comp.code === "PL")
-      ?.json?.response?.[0]?.league?.standings?.[0] || [];
+    const plLeague = standingsResults.find((r) => r && r.comp.code === "PL")
+      ?.json?.response?.[0]?.league;
+    const plTable = plLeague?.standings?.[0] || [];
+
+    // What API-Football actually answered with, per table: its own league id,
+    // name and season. Without this our own label hides a wrong league id or a
+    // season that silently resolved to last year's table.
+    const sources = {};
+    if (plLeague) sources.PL = { id: plLeague.id, name: plLeague.name, season: plLeague.season };
     const englishClubs = new Set(plTable.map((s) => s.team.name));
 
     const allResultsRaw = [];
@@ -250,7 +257,9 @@ export default async (req, context) => {
     const tables = {};
     for (const r of tableOnlyResults) {
       if (!r) continue;
-      const rows = r.json?.response?.[0]?.league?.standings?.[0] || [];
+      const league = r.json?.response?.[0]?.league;
+      const rows = league?.standings?.[0] || [];
+      if (league) sources[r.comp.code] = { id: league.id, name: league.name, season: league.season };
       tables[r.comp.code] = { name: r.comp.name, rows: rows.map(shapeStandingRow) };
     }
 
@@ -302,7 +311,7 @@ export default async (req, context) => {
     else cacheSeconds = 28800;
 
     return new Response(
-      JSON.stringify({ standings, tables, results, fixtures, euroStandings, competitions, roundInfo, updated: new Date().toISOString() }),
+      JSON.stringify({ standings, tables, sources, results, fixtures, euroStandings, competitions, roundInfo, updated: new Date().toISOString() }),
       {
         headers: {
           "content-type": "application/json",
