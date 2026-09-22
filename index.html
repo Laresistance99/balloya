@@ -315,6 +315,12 @@
   td.pos::before{content:""; position:absolute; left:0; top:2px; bottom:2px; width:4px; border-radius:2px;}
   tr.top4 td.pos::before{background:var(--blue);}
   tr.releg td.pos::before{background:var(--red);}
+  tr.playoff td.pos::before{background:var(--gold);}
+  .table-block + .table-block{margin-top:34px;}
+  /* Collapsed shows the top five. Toggling is a class flip on the block, so the
+     60s refresh cannot fight whichever state the reader chose. */
+  .table-block:not(.is-open) tbody tr:nth-child(n+6){display:none;}
+  .table-block .more-btn{margin:12px 0 0;}
   td.team{font-weight:600;}
   td.pts{font-family:'IBM Plex Mono', monospace; font-weight:600;}
   /* On a phone the full table is 660px inside a ~325px column, which pushes
@@ -418,24 +424,7 @@
       <div class="section-head">
         <h2 class="display">Tabellen</h2>
       </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th><th>Lag</th>
-              <th class="num">K</th><th class="num opt">S</th><th class="num opt">U</th><th class="num opt">T</th>
-              <th class="num opt">Mål</th><th class="num">+/-</th><th class="num">Poeng</th>
-            </tr>
-          </thead>
-          <tbody id="standingsBody">
-            <tr><td colspan="9" class="empty-note">Laster tabell …</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="legend">
-        <span><i style="background:var(--blue)"></i> Mesterligaplass</span>
-        <span><i style="background:var(--red)"></i> Nedrykksplass</span>
-      </div>
+      <div id="tables"><div class="empty-note">Laster tabell …</div></div>
     </div>
   </section>
 
@@ -536,26 +525,96 @@
     return d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function renderStandings(standings) {
-    const body = document.getElementById('standingsBody');
-    if (!body) return;
-    if (!standings || !standings.length) {
-      body.innerHTML = '<tr><td colspan="9" class="empty-note">Tabellen er ikke tilgjengelig akkurat n\u00e5.</td></tr>';
-      return;
-    }
-    body.innerHTML = standings.map((s, i) => {
-      const cls = i < 4 ? 'top4' : (i >= standings.length - 3 ? 'releg' : '');
-      const gf = s.goalsFor ?? 0, ga = s.goalsAgainst ?? 0;
-      const gd = s.goalDiff ?? (gf - ga);
-      const gdTxt = gd > 0 ? '+' + gd : String(gd);
-      const gdColor = gd > 0 ? 'var(--blue)' : (gd < 0 ? 'var(--red)' : 'var(--ink-dim)');
-      return `<tr class="${cls}"><td class="pos">${s.rank}</td><td class="team">${s.team}</td>` +
-        `<td class="num">${s.played}</td><td class="num opt">${s.win}</td>` +
-        `<td class="num opt">${s.draw}</td><td class="num opt">${s.lose}</td>` +
-        `<td class="num mono opt">${gf}–${ga}</td>` +
-        `<td class="num mono" style="color:${gdColor}">${gdTxt}</td>` +
-        `<td class="num pts">${s.points}</td></tr>`;
-    }).join('');
+  // Each table shows the top five and hides the rest behind a toggle. The zones
+  // differ per league: the Championship promotes two automatically and sends
+  // four more to a play-off, which one top block cannot express.
+  const TABLE_PREVIEW = 5;
+  const TABLE_SPECS = [
+    {
+      key: 'PL', name: 'Premier League',
+      rows: d => d.standings || [],
+      zones: [{ upto: 4, cls: 'top4', label: 'Mesterligaplass', color: 'var(--blue)' }],
+      relegation: { count: 3, label: 'Nedrykksplass' },
+    },
+    {
+      key: 'ELC', name: 'Championship',
+      rows: d => (d.tables && d.tables.ELC && d.tables.ELC.rows) || [],
+      zones: [
+        { upto: 2, cls: 'top4', label: 'Direkte opprykk', color: 'var(--blue)' },
+        { upto: 6, cls: 'playoff', label: 'Playoff om opprykk', color: 'var(--gold)' },
+      ],
+      relegation: { count: 3, label: 'Nedrykksplass' },
+    },
+  ];
+
+  // Survives the 60s refresh, so an expanded table does not snap shut.
+  const tableOpen = {};
+
+  function standingRowHtml(s, i, total, spec) {
+    let cls = '';
+    for (const z of spec.zones) { if (i < z.upto) { cls = z.cls; break; } }
+    if (!cls && i >= total - spec.relegation.count) cls = 'releg';
+    const gf = s.goalsFor ?? 0, ga = s.goalsAgainst ?? 0;
+    const gd = s.goalDiff ?? (gf - ga);
+    const gdTxt = gd > 0 ? '+' + gd : String(gd);
+    const gdColor = gd > 0 ? 'var(--blue)' : (gd < 0 ? 'var(--red)' : 'var(--ink-dim)');
+
+    return `<tr class="${cls}"><td class="pos">${s.rank}</td><td class="team">${esc(s.team)}</td>` +
+      `<td class="num">${s.played}</td><td class="num opt">${s.win}</td>` +
+      `<td class="num opt">${s.draw}</td><td class="num opt">${s.lose}</td>` +
+      `<td class="num mono opt">${gf}–${ga}</td>` +
+      `<td class="num mono" style="color:${gdColor}">${gdTxt}</td>` +
+      `<td class="num pts">${s.points}</td></tr>`;
+  }
+
+  function tableBlockHtml(spec, rows) {
+    const open = !!tableOpen[spec.key];
+    const legend = spec.zones.map(z => `<span><i style="background:${z.color}"></i> ${z.label}</span>`).join('')
+      + `<span><i style="background:var(--red)"></i> ${spec.relegation.label}</span>`;
+
+    return `<div class="table-block${open ? ' is-open' : ''}" data-table="${spec.key}">
+      <h3 class="sub-head display">${esc(spec.name)}</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Lag</th>
+            <th class="num">K</th><th class="num opt">S</th><th class="num opt">U</th><th class="num opt">T</th>
+            <th class="num opt">Mål</th><th class="num">+/-</th><th class="num">Poeng</th>
+          </tr></thead>
+          <tbody>${rows.map((s, i) => standingRowHtml(s, i, rows.length, spec)).join('')}</tbody>
+        </table>
+      </div>
+      ${rows.length > TABLE_PREVIEW
+        ? `<button class="more-btn table-toggle" aria-expanded="${open}">${open ? 'Vis topp 5' : 'Vis hele tabellen'}</button>`
+        : ''}
+      <div class="legend">${legend}</div>
+    </div>`;
+  }
+
+  function renderTables(data) {
+    const host = document.getElementById('tables');
+    if (!host) return;
+
+    // A league with no rows is left out rather than rendered as an empty shell.
+    const blocks = TABLE_SPECS
+      .map(spec => ({ spec, rows: spec.rows(data) }))
+      .filter(t => t.rows.length)
+      .map(t => tableBlockHtml(t.spec, t.rows));
+
+    host.innerHTML = blocks.length
+      ? blocks.join('')
+      : '<div class="empty-note">Tabellen er ikke tilgjengelig akkurat nå.</div>';
+
+    host.querySelectorAll('.table-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const block = btn.closest('.table-block');
+        const open = !block.classList.contains('is-open');
+        block.classList.toggle('is-open', open);
+        tableOpen[block.dataset.table] = open;
+        btn.setAttribute('aria-expanded', String(open));
+        btn.textContent = open ? 'Vis topp 5' : 'Vis hele tabellen';
+      });
+    });
   }
 
   function scorerPopHtml(r) {
@@ -1082,7 +1141,7 @@
       if (data.error) throw new Error(data.error);
       latestData = data;
 
-      renderStandings(data.standings);
+      renderTables(data);
       renderSubBar();
       applyFilter();
       renderTicker(data.results || [], data.fixtures || []);

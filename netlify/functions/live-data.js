@@ -15,6 +15,14 @@ const COMPETITIONS = [
   { id: 848, code: "CN",  name: "Conference League", group: "europa", standings: true,  scope: "english" },
 ];
 
+// Leagues we show a table for but deliberately pull no matches from. Putting
+// the Championship in COMPETITIONS would drag ~550 extra fixtures into
+// results, fixtures, the ticker and today's board, which is not what the
+// table is for.
+const TABLE_ONLY = [
+  { id: 40, code: "ELC", name: "Championship" },
+];
+
 function slug(a, b) {
   const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
   return `${norm(a)}-${norm(b)}`;
@@ -69,6 +77,18 @@ function prettyRound(raw) {
 
 function isQualifyingRound(raw) {
   return /Qualifying|Preliminary/i.test(String(raw || ""));
+}
+
+function shapeStandingRow(s) {
+  const gf = s.all?.goals?.for ?? 0;
+  const ga = s.all?.goals?.against ?? 0;
+  return {
+    rank: s.rank, team: s.team.name, played: s.all.played,
+    win: s.all.win, draw: s.all.draw, lose: s.all.lose,
+    goalsFor: gf, goalsAgainst: ga,
+    goalDiff: s.goalsDiff ?? (gf - ga),
+    points: s.points,
+  };
 }
 
 function shapeMatch(f, comp, scorers) {
@@ -136,9 +156,14 @@ export default async (req, context) => {
       (c) => () => apiFetch(`/standings?league=${c.id}&season=${SEASON}`, apiKey).then((j) => ({ comp: c, json: j }))
     );
 
-    const [seasonResults, standingsResults] = await Promise.all([
+    const tableOnlyTasks = TABLE_ONLY.map(
+      (c) => () => apiFetch(`/standings?league=${c.id}&season=${SEASON}`, apiKey).then((j) => ({ comp: c, json: j }))
+    );
+
+    const [seasonResults, standingsResults, tableOnlyResults] = await Promise.all([
       paced(seasonTasks),
       paced(standingsTasks),
+      paced(tableOnlyTasks),
     ]);
 
     const plTable = standingsResults.find((r) => r && r.comp.code === "PL")
@@ -217,14 +242,17 @@ export default async (req, context) => {
     results = applyManualOverlay(results, manualStore);
     const fixtures = allFixturesRaw.map(({ f, comp }) => shapeMatch(f, comp, []));
 
-    const standings = plTable.map((s) => ({
-      rank: s.rank, team: s.team.name, played: s.all.played,
-      win: s.all.win, draw: s.all.draw, lose: s.all.lose,
-      goalsFor: s.all?.goals?.for ?? 0,
-      goalsAgainst: s.all?.goals?.against ?? 0,
-      goalDiff: s.goalsDiff ?? ((s.all?.goals?.for ?? 0) - (s.all?.goals?.against ?? 0)),
-      points: s.points,
-    }));
+    const standings = plTable.map(shapeStandingRow);
+
+    // Table-only leagues, keyed by code so the page can pick out what it shows.
+    // An empty array means the call failed or the league had no table yet; the
+    // page leaves that block out rather than rendering an empty shell.
+    const tables = {};
+    for (const r of tableOnlyResults) {
+      if (!r) continue;
+      const rows = r.json?.response?.[0]?.league?.standings?.[0] || [];
+      tables[r.comp.code] = { name: r.comp.name, rows: rows.map(shapeStandingRow) };
+    }
 
     const euroStandings = [];
     for (const r of standingsResults) {
@@ -274,7 +302,7 @@ export default async (req, context) => {
     else cacheSeconds = 28800;
 
     return new Response(
-      JSON.stringify({ standings, results, fixtures, euroStandings, competitions, roundInfo, updated: new Date().toISOString() }),
+      JSON.stringify({ standings, tables, results, fixtures, euroStandings, competitions, roundInfo, updated: new Date().toISOString() }),
       {
         headers: {
           "content-type": "application/json",
