@@ -504,10 +504,6 @@
 
       <div class="filter-bar sub-bar" id="subBar" style="display:none;" role="tablist" aria-label="Velg turnering"></div>
 
-      <div id="europaStandingsWrap" style="display:none;">
-        <h3 class="sub-head display">Stilling i Europa</h3>
-        <div id="europaStandings" class="grid cols-3" style="margin-bottom:26px;"></div>
-      </div>
 
       <div class="round-nav" id="roundNav" style="display:none;">
         <button class="round-arrow" id="roundPrev" aria-label="Forrige runde">‹</button>
@@ -921,19 +917,6 @@
   window.addEventListener('scroll', hideTickerPop, { passive: true });
   window.addEventListener('resize', hideTickerPop);
 
-  function renderEuropaStandings(rows) {
-    const el = document.getElementById('europaStandings');
-    if (!el) return;
-    if (!rows || !rows.length) { el.innerHTML = '<p class="ts">Ingen engelske lag i ligafasen enna \u2013 sjekk resultater og kommende kamper under for lag som fortsatt er i kvalifisering.</p>'; return; }
-    el.innerHTML = rows.map(r => `<div class="result-card">
-      <div class="date">${r.competitionName}</div>
-      <div class="result-row"><span class="side">${r.team}</span><span class="score mono">#${r.rank}</span></div>
-      <div class="ts" style="margin-top:6px;">${r.played} kamper spilt · ${r.points} poeng</div>
-    </div>`).join('');
-  }
-
-
-
   // Team names reach innerHTML straight from the feed, so escape them here.
   function esc(str) {
     return String(str ?? '').replace(/[&<>"']/g, c => (
@@ -1045,11 +1028,13 @@
     }
 
     bar.style.display = 'flex';
-    const allLabel = activeFilter === 'cup' ? 'Begge cuper' : 'Alle tre';
-    bar.innerHTML = [{ code: 'alle', name: allLabel }, ...comps].map(c => {
+    // No combined option: a round belongs to one competition, so mixing them
+    // into a single sequence made the navigator harder to read, not richer.
+    if (!comps.some(c => c.code === activeSub)) activeSub = comps[0].code;
+    bar.innerHTML = comps.map(c => {
       const n = (c.teams || []).length;
-      const badge = c.code !== 'alle' && n ? ` <span class="count">${n}</span>` : '';
-      const title = c.code !== 'alle' && n ? ` title="${c.teams.join(', ')}"` : '';
+      const badge = n ? ` <span class="count">${n}</span>` : '';
+      const title = n ? ` title="${c.teams.join(', ')}"` : '';
       return `<button class="filter-pill${activeSub === c.code ? ' active' : ''}" role="tab"
         aria-selected="${activeSub === c.code}" data-sub="${c.code}"${title}>${c.name}${badge}</button>`;
     }).join('');
@@ -1170,13 +1155,6 @@
     }
     renderRound(rounds, roundIndex);
 
-    const euro = (d.euroStandings || []).filter(matchesFilter);
-    const showEuro = activeFilter === 'europa' && euro.length > 0;
-    const wrap = document.getElementById('europaStandingsWrap');
-    if (wrap) {
-      wrap.style.display = showEuro ? 'block' : 'none';
-      if (showEuro) renderEuropaStandings(euro);
-    }
 
     const counts = { liga: 0, cup: 0, europa: 0 };
     [...(d.results || []), ...(d.fixtures || [])].forEach(m => {
