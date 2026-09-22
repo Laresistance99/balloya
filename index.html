@@ -453,6 +453,9 @@
     display:flex; align-items:center; justify-content:center; padding:20px;
     background:rgba(16,36,27,0.55); overflow-y:auto;
   }
+  /* display:flex above beats the browser's [hidden]{display:none}, so the
+     hidden attribute needs restating here or the dialog shows on load. */
+  .modal-backdrop[hidden]{display:none;}
   .modal{
     position:relative; width:100%; max-width:440px; margin:auto;
     background:var(--paper-card); border:1px solid var(--line);
