@@ -1277,19 +1277,25 @@
     for (const r of rounds) {
       r.matches.sort((a, b) => new Date(a.date) - new Date(b.date));
       r.start = new Date(r.matches[0].date).getTime();
-      r.end = new Date(r.matches[r.matches.length - 1].date).getTime();
+      // A postponed match rescheduled weeks later would otherwise hold its
+      // round open until then, so only kick-offs within ROUND_SPAN_MS of the
+      // first count towards when the round ends.
+      const inSpan = r.matches.filter(m => new Date(m.date).getTime() - r.start <= ROUND_SPAN_MS);
+      r.end = new Date(inSpan[inSpan.length - 1].date).getTime();
     }
     rounds.sort((a, b) => a.start - b.start);
     return rounds;
   }
 
-  // A round stays current while it runs and for three hours after its last
-  // kick-off, so the view does not jump ahead in the middle of a Sunday.
+  const ROUND_SPAN_MS = 10 * 24 * 60 * 60 * 1000;
+  const ROUND_GRACE_MS = 24 * 60 * 60 * 1000;
+
+  // Show the earliest round that is not yet concluded. A round concludes 24
+  // hours after its final match ends; until then it stays up even if a later
+  // round has already kicked off. Same rule for every competition.
   function defaultRoundIndex(rounds) {
     const now = Date.now();
-    let i = rounds.findIndex(r => now >= r.start && now <= r.end + 3 * 60 * 60 * 1000);
-    if (i !== -1) return i;
-    i = rounds.findIndex(r => r.start > now);
+    const i = rounds.findIndex(r => now < r.end + MATCH_LENGTH_MS + ROUND_GRACE_MS);
     if (i !== -1) return i;
     return Math.max(0, rounds.length - 1);
   }
