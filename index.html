@@ -530,6 +530,7 @@
     <nav>
       <a href="#tabell">Tabell</a>
       <a href="#kamper">Kamper</a>
+      <a href="/statistikk">Statistikk</a>
       <button class="nav-contact" data-contact-open data-contact-type="Spørsmål">Kontakt oss</button>
       <button id="themeToggle" class="theme-toggle" aria-label="Bytt mellom lys og mørk modus" title="Bytt visning">
         <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -1438,7 +1439,7 @@
     try {
       // The version tag gives us a fresh cache key whenever the backend changes,
       // so a bad cached response can never outlive a deploy. Bump it on backend edits.
-      const res = await fetch('/api/live-data?v=8');
+      const res = await fetch('/api/live-data?v=9');
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       latestData = data;
@@ -1495,6 +1496,9 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && contactModal && !contactModal.hidden) closeContact();
   });
+
+  // Other pages have no form of their own; their contact button lands here.
+  if (location.hash === '#kontakt') openContact('Spørsmål');
 
   if (contactForm) {
     contactForm.addEventListener('submit', async (e) => {

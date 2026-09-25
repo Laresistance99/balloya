@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statistikk – Balløya</title>
+<meta name="description" content="Toppscorere, målgivende og lagstatistikk fra Premier League, Championship, de engelske cupene og Europa – på norsk.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script>
+(function(){
+  try{
+    var saved = localStorage.getItem('balloya-theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var theme = saved || (prefersDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){}
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  /* Tokens, masthead, pills and footer mirror index.html; keep them in step. */
+  :root{
+    --paper:#EAF0EA;
+    --paper-card:#F8FBF7;
+    --ink:#10241B;
+    --ink-dim:#4B6358;
+    --line: rgba(16,36,27,0.14);
+    --blue:#2748FF;
+    --blue-dim: rgba(39,72,255,0.10);
+    --gold:#E8A83C;
+    --red:#B23A2E;
+    --on-blue:#FFFFFF;
+    --shadow: rgba(16,36,27,0.22);
+    --maxw: 1120px;
+    --radius: 10px;
+  }
+  html[data-theme="dark"]{
+    --paper:#0C1712;
+    --paper-card:#152420;
+    --ink:#E7EFE9;
+    --ink-dim:#93A89C;
+    --line: rgba(231,239,233,0.16);
+    --blue:#7C93FF;
+    --blue-dim: rgba(124,147,255,0.16);
+    --gold:#F0BC5E;
+    --red:#E8776A;
+    --on-blue:#0C1712;
+    --shadow: rgba(0,0,0,0.55);
+  }
+  html{color-scheme:light;}
+  html[data-theme="dark"]{color-scheme:dark;}
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px;}
+  .display{font-family:'Anton', sans-serif; font-weight:400; letter-spacing:0.01em; text-transform:uppercase;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  :focus-visible{outline:3px solid var(--blue); outline-offset:2px;}
+
+  /* ---------- Masthead ---------- */
+  .masthead{border-bottom:1px solid var(--line); padding:18px 0;}
+  .masthead .wrap{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;}
+  .masthead .brand-mark{font-size:22px; letter-spacing:0.04em; text-decoration:none;}
+  .masthead nav{display:flex; align-items:center; gap:16px; font-size:14px; font-weight:600; flex-wrap:wrap; row-gap:6px;}
+  .masthead nav a{text-decoration:none; border-bottom:2px solid transparent; padding-bottom:2px;}
+  .masthead nav a:hover, .masthead nav a[aria-current="page"]{border-bottom-color:var(--blue);}
+  @media (max-width: 480px){
+    .masthead nav{gap:10px; font-size:13px;}
+    .masthead nav a{white-space:nowrap;}
+  }
+  .nav-contact{
+    font-size:13.5px; font-weight:600;
+    padding:5px 12px; border-radius:999px;
+    border:1px solid var(--blue) !important; color:var(--blue);
+    transition:background .15s ease, color .15s ease;
+  }
+  .nav-contact:hover{background:var(--blue); color:var(--on-blue);}
+  .theme-toggle{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:34px; height:34px; padding:0;
+    border:1px solid var(--line); border-radius:999px;
+    background:var(--paper-card); color:var(--ink-dim);
+    cursor:pointer; transition:color .15s ease, border-color .15s ease;
+  }
+  .theme-toggle:hover{color:var(--blue); border-color:var(--blue);}
+  .theme-toggle .icon-moon{display:none;}
+  html[data-theme="dark"] .theme-toggle .icon-sun{display:none;}
+  html[data-theme="dark"] .theme-toggle .icon-moon{display:block;}
+
+  /* ---------- Page head and tabs ---------- */
+  .stats-head{padding:44px 0 8px;}
+  .stats-head h1{font-size:clamp(38px, 7vw, 68px); margin:0 0 20px; line-height:0.98;}
+  .filter-bar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:26px;}
+  .filter-pill{
+    font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; font-weight:600;
+    padding:8px 15px; border-radius:999px; cursor:pointer; text-decoration:none;
+    background:var(--paper-card); color:var(--ink-dim);
+    border:1px solid var(--line);
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+    white-space:nowrap;
+  }
+  .filter-pill:hover{border-color:var(--blue); color:var(--blue);}
+  .filter-pill.active{background:var(--blue); color:var(--on-blue); border-color:var(--blue);}
+  .sub-bar .filter-pill{font-size:12.5px; padding:6px 13px; background:transparent;}
+  .sub-bar .filter-pill.active{background:var(--ink); border-color:var(--ink); color:var(--paper);}
+
+  .back{
+    display:inline-block; margin-bottom:10px; text-decoration:none;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--blue);
+  }
+  .back:hover{text-decoration:underline;}
+  .comp-title{font-size:clamp(26px,4vw,36px); margin:0 0 16px;}
+  .note{color:var(--ink-dim); font-size:13px; margin:-8px 0 20px;}
+  .empty-note{color:var(--ink-dim); font-size:14px; padding:14px 2px;}
+
+  /* ---------- Competition cards (Oversikt) ---------- */
+  .comp-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:14px; padding-bottom:20px;}
+  .comp-card{
+    display:flex; flex-direction:column; gap:10px; text-decoration:none;
+    background:var(--paper-card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 20px; transition:border-color .15s ease, transform .15s ease;
+  }
+  .comp-card:hover{border-color:var(--blue);}
+  @media (hover: hover){ .comp-card:hover{transform:translateY(-2px);} }
+  @media (prefers-reduced-motion: reduce){ .comp-card{transition:none;} .comp-card:hover{transform:none;} }
+  .comp-card-top{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+  .comp-card-name{font-size:24px; line-height:1.05;}
+  .comp-card-arrow{color:var(--blue); font-size:22px; line-height:1;}
+  .comp-card-meta{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-dim);}
+  .comp-card-lead{font-size:14px; color:var(--ink-dim);}
+  .comp-card-lead strong{color:var(--ink);}
+
+  /* ---------- Leader boxes (competition Oversikt) ---------- */
+  .board-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; padding-bottom:20px;}
+  .board{background:var(--paper-card); border:1px solid var(--line); border-radius:var(--radius); padding:16px 16px 8px;}
+  .board-head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+    text-decoration:none; margin-bottom:10px;
+  }
+  .board-head h3{font-size:21px; margin:0;}
+  .board-head .sub{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-dim);}
+  .board-head:hover h3{color:var(--blue);}
+  .board-head h3::after{content:" ›"; color:var(--blue);}
+  .leader{display:grid; grid-template-columns:22px 40px 1fr auto; align-items:center; gap:10px; padding:7px 0;}
+  .leader + .leader{border-top:1px solid var(--line);}
+  .leader .rank{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-dim); text-align:center;}
+  .leader .who{min-width:0;}
+  .leader .name{font-weight:600; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .leader .club{display:flex; align-items:center; gap:5px; font-size:12px; color:var(--ink-dim); overflow:hidden; white-space:nowrap;}
+  .leader .club span{overflow:hidden; text-overflow:ellipsis;}
+  .leader .val{font-family:'Anton',sans-serif; font-size:22px; min-width:28px; text-align:right;}
+  .leader.first .val{color:var(--blue);}
+
+  /* Player photos and club crests arrive from the feed and can fail to load;
+     the round frame keeps the row from jumping when they do. */
+  .avatar{width:40px; height:40px; border-radius:50%; object-fit:cover; background:var(--blue-dim); display:block;}
+  .crest{width:40px; height:40px; object-fit:contain; display:block;}
+  .crest-sm{width:14px; height:14px; object-fit:contain; flex:none;}
+  .avatar-blank{width:40px; height:40px; border-radius:50%; background:var(--blue-dim);}
+
+  /* ---------- Sortable tables (Spillere, Klubber) ---------- */
+  .table-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-card); margin-bottom:20px;}
+  table{width:100%; border-collapse:collapse;}
+  thead th{
+    text-align:left; font-family:'IBM Plex Mono', monospace; font-size:11px;
+    text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);
+    padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap;
+  }
+  thead th.num, td.num{text-align:center;}
+  th button{
+    all:unset; cursor:pointer; border-bottom:1px dotted transparent;
+  }
+  th button:hover{color:var(--blue);}
+  th button:focus-visible{outline:3px solid var(--blue); outline-offset:2px;}
+  th.sorted button{color:var(--blue); border-bottom-color:var(--blue);}
+  tbody td{padding:9px 12px; border-bottom:1px solid var(--line); font-size:14px;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.pos{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-dim); width:36px;}
+  td.num.sorted{font-weight:700; color:var(--blue);}
+  .cell-who{display:flex; align-items:center; gap:10px; min-width:0;}
+  .cell-who > img, .cell-who > .avatar-blank{width:32px; height:32px; flex:none;}
+  .cell-who .name{font-weight:600; white-space:nowrap;}
+  .cell-who .club{display:flex; align-items:center; gap:5px; font-size:12px; color:var(--ink-dim); white-space:nowrap;}
+  @media (max-width: 640px){
+    th.opt, td.opt{display:none;}
+    thead th, tbody td{padding-left:8px; padding-right:8px;}
+    /* Long names wrap rather than push the numbers off screen. */
+    .cell-who .name{white-space:normal;}
+    .cell-who .club{white-space:normal;}
+  }
+
+  footer{padding:36px 0 60px; color:var(--ink-dim); font-size:12.5px;}
+  footer .wrap{display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; border-top:1px solid var(--line); padding-top:22px;}
+  @media (max-width: 480px){ .wrap{padding:0 16px;} }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="display brand-mark" href="/">Balløya</a>
+    <nav>
+      <a href="/#tabell">Tabell</a>
+      <a href="/#kamper">Kamper</a>
+      <a href="/statistikk" aria-current="page">Statistikk</a>
+      <a class="nav-contact" href="/#kontakt">Kontakt oss</a>
+      <button id="themeToggle" class="theme-toggle" aria-label="Bytt mellom lys og mørk modus" title="Bytt visning">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="stats-head">
+    <h1 class="display">Statistikk</h1>
+    <div class="filter-bar" role="tablist" aria-label="Statistikk">
+      <a class="filter-pill active" role="tab" aria-selected="true" href="#/">Oversikt</a>
+    </div>
+  </div>
+  <div id="view"><div class="empty-note">Laster statistikk …</div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Uoffisiell fansside – ikke tilknyttet Premier League.</span>
+    <span>Laget for norske Premier League-fans.</span>
+    <span>Kontakt: <a href="mailto:post@balloya.no">post@balloya.no</a></span>
+  </div>
+</footer>
+
+<script>
+  const SEASON_LABEL = '2026/27';
+
+  // Order of the cards on Oversikt. English-scope competitions only hold
+  // matches with a Premier League club in them, so their club stats say so.
+  const COMPS = [
+    { code: 'PL',  name: 'Premier League' },
+    { code: 'ELC', name: 'Championship' },
+    { code: 'FA',  name: 'FA-cupen' },
+    { code: 'EFL', name: 'Ligacupen' },
+    { code: 'CL',  name: 'Champions League', englishOnly: true },
+    { code: 'EL',  name: 'Europa League',    englishOnly: true },
+    { code: 'CN',  name: 'Conference League', englishOnly: true },
+  ];
+
+  const PLAYER_COLS = [
+    { key: 'apps',    label: 'K',      title: 'Kamper',       opt: false },
+    { key: 'minutes', label: 'Min',    title: 'Minutter',     opt: true },
+    { key: 'goals',   label: 'Mål',    title: 'Mål',          opt: false },
+    { key: 'assists', label: 'Ass', title: 'Målgivende',   opt: false },
+    { key: 'penalties', label: 'Str',  title: 'Straffemål',   opt: true },
+    { key: 'yellow',  label: 'Gule',   title: 'Gule kort',    opt: true },
+    { key: 'red',     label: 'Røde',   title: 'Røde kort',    opt: true },
+  ];
+
+  const CLUB_COLS = [
+    { key: 'played', label: 'K',   title: 'Kamper',            opt: false },
+    { key: 'won',    label: 'S',   title: 'Seire',             opt: true },
+    { key: 'drawn',  label: 'U',   title: 'Uavgjort',          opt: true },
+    { key: 'lost',   label: 'T',   title: 'Tap',               opt: true },
+    { key: 'gf',     label: 'Mål', title: 'Mål scoret',        opt: false },
+    { key: 'ga',     label: 'Inn', title: 'Mål sluppet inn',   opt: false, asc: true },
+    { key: 'cs',     label: 'Null', title: 'Holdt nullen',     opt: false },
+    { key: 'gpg',    label: 'Snitt', title: 'Mål per kamp',    opt: true },
+  ];
+
+  const FINISHED = ['FT', 'AET', 'PEN'];
+
+  let liveData = null;
+  let statsData = null;
+  let statsFailed = false;
+
+  function esc(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  // Only feed URLs reach an src; anything else is dropped rather than escaped.
+  function safeUrl(u) {
+    return /^https:\/\//.test(u || '') ? esc(u) : '';
+  }
+
+  // Crests come with the league tables and the player lists; cup-only clubs
+  // may have neither, and then simply go without.
+  function crestMap() {
+    const map = {};
+    const add = (name, logo) => { if (name && logo && !map[name]) map[name] = logo; };
+    for (const r of (liveData?.standings || [])) add(r.team, r.logo);
+    for (const t of Object.values(liveData?.tables || {})) for (const r of (t.rows || [])) add(r.team, r.logo);
+    for (const c of Object.values(statsData?.competitions || {})) for (const p of (c.players || [])) add(p.team, p.teamLogo);
+    return map;
+  }
+
+  // Per-club totals, counted from finished matches in our own results.
+  function clubStats(code) {
+    const comp = COMPS.find(c => c.code === code);
+    const clubs = new Map();
+    const get = (name) => {
+      if (!clubs.has(name)) clubs.set(name, { team: name, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, cs: 0 });
+      return clubs.get(name);
+    };
+    for (const m of (liveData?.results || [])) {
+      if (m.competition !== code || !FINISHED.includes(m.status)) continue;
+      if (m.homeGoals == null || m.awayGoals == null) continue;
+      for (const [name, f, a] of [[m.home, m.homeGoals, m.awayGoals], [m.away, m.awayGoals, m.homeGoals]]) {
+        const c = get(name);
+        c.played++; c.gf += f; c.ga += a;
+        if (a === 0) c.cs++;
+        if (f > a) c.won++; else if (f < a) c.lost++; else c.drawn++;
+      }
+    }
+    let list = [...clubs.values()];
+    if (comp?.englishOnly) {
+      const english = new Set((liveData?.competitions || []).find(c => c.code === code)?.teams || []);
+      list = list.filter(c => english.has(c.team));
+    }
+    for (const c of list) c.gpg = c.played ? Math.round((c.gf / c.played) * 100) / 100 : 0;
+    return list;
+  }
+
+  function playedCount(code) {
+    return (liveData?.results || []).filter(m => m.competition === code && FINISHED.includes(m.status)).length;
+  }
+
+  function players(code) {
+    return statsData?.competitions?.[code]?.players || [];
+  }
+
+  // Sort descending on key (ascending where fewer is better), then by name.
+  function sortBy(list, key, asc, nameKey) {
+    return list.slice().sort((a, b) => {
+      const d = asc ? a[key] - b[key] : b[key] - a[key];
+      return d || String(a[nameKey]).localeCompare(String(b[nameKey]), 'no');
+    });
+  }
+
+  // Shared places: two players on five goals are both 1, the next one is 3.
+  function ranks(list, key) {
+    return list.map(x => 1 + list.filter(y => y[key] > x[key]).length);
+  }
+
+  // ---------- Views ----------
+
+  function viewOverview() {
+    const cards = COMPS.map(c => {
+      const n = playedCount(c.code);
+      const top = sortBy(players(c.code), 'goals', false, 'name')[0];
+      const meta = n ? `${n} ${n === 1 ? 'kamp' : 'kamper'} spilt` : 'Ikke startet ennå';
+      const lead = top && top.goals ? `Toppscorer: <strong>${esc(top.name)}</strong> · ${top.goals}` : '';
+      return `<a class="comp-card" href="#/${c.code}">
+        <div class="comp-card-top"><span class="display comp-card-name">${esc(c.name)}</span><span class="comp-card-arrow" aria-hidden="true">›</span></div>
+        <div class="comp-card-meta">${meta}</div>
+        ${lead ? `<div class="comp-card-lead">${lead}</div>` : ''}
+      </a>`;
+    }).join('');
+    return `<div class="comp-grid">${cards}</div>`;
+  }
+
+  function leaderRow(rank, img, name, clubHtml, val) {
+    return `<div class="leader${rank === 1 ? ' first' : ''}">
+      <span class="rank">${rank}</span>${img}
+      <div class="who"><div class="name" title="${esc(name)}">${esc(name)}</div>${clubHtml}</div>
+      <span class="val">${val}</span>
+    </div>`;
+  }
+
+  function clubLine(team, crests) {
+    const logo = safeUrl(crests[team]);
+    return `<div class="club">${logo ? `<img class="crest-sm" src="${logo}" alt="" loading="lazy">` : ''}<span>${esc(team)}</span></div>`;
+  }
+
+  function avatar(url, cls) {
+    const u = safeUrl(url);
+    return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : '<span class="avatar-blank"></span>';
+  }
+
+  function playerBoard(code, key, title, crests) {
+    const href = `#/${code}/spillere/${key}`;
+    const head = `<a class="board-head" href="${href}"><h3 class="display">${title}</h3><span class="sub">Spillere</span></a>`;
+    if (!statsData) {
+      return `<div class="board">${head}<div class="empty-note">${statsFailed ? 'Spillerstatistikk er ikke tilgjengelig akkurat nå.' : 'Laster …'}</div></div>`;
+    }
+    const list = sortBy(players(code), key, false, 'name').filter(p => p[key] > 0).slice(0, 10);
+    if (!list.length) return `<div class="board">${head}<div class="empty-note">Ingen ennå.</div></div>`;
+    const rk = ranks(list, key);
+    return `<div class="board">${head}` + list.map((p, i) =>
+      leaderRow(rk[i], avatar(p.photo, 'avatar'), p.name, clubLine(p.team, crests), p[key])
+    ).join('') + `</div>`;
+  }
+
+  function clubBoard(code, key, title, crests, asc) {
+    const href = `#/${code}/klubber/${key}`;
+    const head = `<a class="board-head" href="${href}"><h3 class="display">${title}</h3><span class="sub">Klubber</span></a>`;
+    const list = sortBy(clubStats(code), key, !!asc, 'team').filter(c => c.played > 0).slice(0, 10);
+    if (!list.length) return `<div class="board">${head}<div class="empty-note">Ingen kamper spilt ennå.</div></div>`;
+    const rk = asc ? list.map(x => 1 + list.filter(y => y[key] < x[key]).length) : ranks(list, key);
+    return `<div class="board">${head}` + list.map((c, i) => {
+      const crest = safeUrl(crests[c.team]);
+      const img = crest ? `<img class="crest" src="${crest}" alt="" loading="lazy">` : '<span class="avatar-blank"></span>';
+      return leaderRow(rk[i], img, c.team, `<div class="club"><span>${c.played} ${c.played === 1 ? 'kamp' : 'kamper'}</span></div>`, c[key]);
+    }).join('') + `</div>`;
+  }
+
+  function compTabs(code, tab) {
+    const t = (id, label) =>
+      `<a class="filter-pill${tab === id ? ' active' : ''}" role="tab" aria-selected="${tab === id}" href="#/${code}${id === 'oversikt' ? '' : '/' + id}">${label}</a>`;
+    return `<div class="filter-bar sub-bar" role="tablist" aria-label="Velg visning">${t('oversikt', 'Oversikt')}${t('spillere', 'Spillere')}${t('klubber', 'Klubber')}</div>`;
+  }
+
+  function viewCompetition(code, tab, key) {
+    const comp = COMPS.find(c => c.code === code);
+    if (!comp) return viewOverview();
+    const crests = crestMap();
+    let body = '';
+
+    if (tab === 'spillere') body = playersTable(code, key || 'goals', crests);
+    else if (tab === 'klubber') body = clubsTable(code, key || 'cs', crests);
+    else {
+      body = `<div class="board-grid">
+        ${playerBoard(code, 'goals', 'Mål', crests)}
+        ${playerBoard(code, 'assists', 'Målgivende', crests)}
+        ${clubBoard(code, 'cs', 'Holdt nullen', crests)}
+        ${clubBoard(code, 'gf', 'Flest mål', crests)}
+      </div>`;
+      if (comp.englishOnly) body = `<p class="note">Klubbstatistikken gjelder bare engelske klubber. Spillerlistene gjelder hele turneringen.</p>` + body;
+    }
+
+    return `<a class="back" href="#/">‹ Alle turneringer</a>
+      <h2 class="display comp-title">${esc(comp.name)} ${SEASON_LABEL}</h2>
+      ${compTabs(code, tab)}${body}`;
+  }
+
+  function sortHead(cols, key, base) {
+    return cols.map(c =>
+      `<th class="num${c.opt ? ' opt' : ''}${c.key === key ? ' sorted' : ''}"${c.key === key ? ' aria-sort="descending"' : ''}>` +
+      `<button data-href="${base}/${c.key}" title="Sorter etter ${c.title.toLowerCase()}">${c.label}</button></th>`
+    ).join('');
+  }
+
+  function playersTable(code, key, crests) {
+    if (!PLAYER_COLS.some(c => c.key === key)) key = 'goals';
+    if (!statsData) return `<div class="empty-note">${statsFailed ? 'Spillerstatistikk er ikke tilgjengelig akkurat nå.' : 'Laster …'}</div>`;
+    const list = sortBy(players(code), key, false, 'name');
+    if (!list.length) return `<div class="empty-note">Ingen spillerstatistikk for denne turneringen ennå.</div>`;
+    const rk = ranks(list, key);
+    const rows = list.map((p, i) => `<tr>
+      <td class="pos">${rk[i]}</td>
+      <td><div class="cell-who">${avatar(p.photo, 'avatar')}<div><div class="name">${esc(p.name)}</div>${clubLine(p.team, crests)}</div></div></td>
+      ${PLAYER_COLS.map(c => `<td class="num${c.opt ? ' opt' : ''}${c.key === key ? ' sorted' : ''}">${p[c.key]}</td>`).join('')}
+    </tr>`).join('');
+    return `<p class="note">Spillerne blant de 20 beste på mål eller målgivende. Trykk på en kolonne for å sortere.</p>
+      <div class="table-scroll"><table>
+        <thead><tr><th>#</th><th>Spiller</th>${sortHead(PLAYER_COLS, key, `#/${code}/spillere`)}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+  }
+
+  function clubsTable(code, key, crests) {
+    const col = CLUB_COLS.find(c => c.key === key) || CLUB_COLS.find(c => c.key === 'cs');
+    key = col.key;
+    const list = sortBy(clubStats(code), key, !!col.asc, 'team');
+    if (!list.length) return `<div class="empty-note">Ingen kamper spilt ennå.</div>`;
+    const rk = col.asc ? list.map(x => 1 + list.filter(y => y[key] < x[key]).length) : ranks(list, key);
+    const comp = COMPS.find(c => c.code === code);
+    const rows = list.map((c, i) => {
+      const crest = safeUrl(crests[c.team]);
+      const img = crest ? `<img class="crest" src="${crest}" alt="" loading="lazy">` : '<span class="avatar-blank"></span>';
+      return `<tr>
+        <td class="pos">${rk[i]}</td>
+        <td><div class="cell-who">${img}<div class="name">${esc(c.team)}</div></div></td>
+        ${CLUB_COLS.map(k => `<td class="num${k.opt ? ' opt' : ''}${k.key === key ? ' sorted' : ''}">${k.key === 'gpg' ? c.gpg.toFixed(2).replace('.', ',') : c[k.key]}</td>`).join('')}
+      </tr>`;
+    }).join('');
+    const note = comp?.englishOnly
+      ? 'Bare engelske klubber. Talt opp fra kampene deres i turneringen.'
+      : 'Talt opp fra alle ferdigspilte kamper i turneringen. Trykk på en kolonne for å sortere.';
+    return `<p class="note">${note}</p>
+      <div class="table-scroll"><table>
+        <thead><tr><th>#</th><th>Klubb</th>${sortHead(CLUB_COLS, key, `#/${code}/klubber`)}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+  }
+
+  // ---------- Routing ----------
+  // #/                    Oversikt, one card per competition
+  // #/PL                  that competition's leader boxes
+  // #/PL/spillere/goals   players, sorted on a column
+  // #/PL/klubber/cs       clubs, sorted on a column
+
+  function render() {
+    const view = document.getElementById('view');
+    if (!liveData) return;
+    const [code, tab, key] = location.hash.replace(/^#\/?/, '').split('/');
+    view.innerHTML = code ? viewCompetition(code, tab || 'oversikt', key) : viewOverview();
+    view.querySelectorAll('th button[data-href]').forEach(b => {
+      b.addEventListener('click', () => { location.hash = b.dataset.href; });
+    });
+    const comp = COMPS.find(c => c.code === code);
+    document.title = comp ? `${comp.name} – Statistikk – Balløya` : 'Statistikk – Balløya';
+  }
+
+  let lastRoute = location.hash;
+  window.addEventListener('hashchange', () => {
+    // A new competition starts at the top; re-sorting a table keeps the place.
+    const was = lastRoute.split('/')[1], now = location.hash.split('/')[1];
+    lastRoute = location.hash;
+    render();
+    if (was !== now) window.scrollTo(0, 0);
+  });
+
+  async function load() {
+    const view = document.getElementById('view');
+    const live = fetch('/api/live-data?v=9').then(r => r.json()).then(d => {
+      if (d.error) throw new Error(d.error);
+      liveData = d;
+      render();
+    }).catch(() => {
+      if (!liveData) view.innerHTML = '<div class="empty-note">Statistikken er ikke tilgjengelig akkurat nå.</div>';
+    });
+    const stats = fetch('/api/stats?v=1').then(r => r.json()).then(d => {
+      if (d.error) throw new Error(d.error);
+      statsData = d;
+    }).catch(() => { statsFailed = true; });
+    await stats;
+    render();
+    await live;
+  }
+  load();
+
+  // ---------- Theme ----------
+  const themeBtn = document.getElementById('themeToggle');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('balloya-theme', next); } catch (e) {}
+    });
+  }
+</script>
+
+</body>
+</html>

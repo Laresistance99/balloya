@@ -78,7 +78,7 @@ function shapeStandingRow(s) {
   const gf = s.all?.goals?.for ?? 0;
   const ga = s.all?.goals?.against ?? 0;
   return {
-    rank: s.rank, team: s.team.name, played: s.all.played,
+    rank: s.rank, team: s.team.name, logo: s.team.logo, played: s.all.played,
     win: s.all.win, draw: s.all.draw, lose: s.all.lose,
     goalsFor: gf, goalsAgainst: ga,
     goalDiff: s.goalsDiff ?? (gf - ga),
