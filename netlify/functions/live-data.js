@@ -13,14 +13,9 @@ const COMPETITIONS = [
   { id: 2,   code: "CL",  name: "Champions League",  group: "europa", standings: true,  scope: "english" },
   { id: 3,   code: "EL",  name: "Europa League",     group: "europa", standings: true,  scope: "english" },
   { id: 848, code: "CN",  name: "Conference League", group: "europa", standings: true,  scope: "english" },
-];
-
-// Leagues we show a table for but deliberately pull no matches from. Putting
-// the Championship in COMPETITIONS would drag ~550 extra fixtures into
-// results, fixtures, the ticker and today's board, which is not what the
-// table is for.
-const TABLE_ONLY = [
-  { id: 40, code: "ELC", name: "Championship" },
+  // ~550 matches a season. The page keeps them out of the ticker and today's
+  // board, so they only show under their own tab.
+  { id: 40,  code: "ELC", name: "Championship",      group: "championship", standings: true, scope: "all" },
 ];
 
 function slug(a, b) {
@@ -156,14 +151,9 @@ export default async (req, context) => {
       (c) => () => apiFetch(`/standings?league=${c.id}&season=${SEASON}`, apiKey).then((j) => ({ comp: c, json: j }))
     );
 
-    const tableOnlyTasks = TABLE_ONLY.map(
-      (c) => () => apiFetch(`/standings?league=${c.id}&season=${SEASON}`, apiKey).then((j) => ({ comp: c, json: j }))
-    );
-
-    const [seasonResults, standingsResults, tableOnlyResults] = await Promise.all([
+    const [seasonResults, standingsResults] = await Promise.all([
       paced(seasonTasks),
       paced(standingsTasks),
-      paced(tableOnlyTasks),
     ]);
 
     const plLeague = standingsResults.find((r) => r && r.comp.code === "PL")
@@ -256,7 +246,7 @@ export default async (req, context) => {
     // the league had no table yet; the page leaves that button out rather than
     // offering an empty table.
     const tables = {};
-    for (const r of [...standingsResults, ...tableOnlyResults]) {
+    for (const r of standingsResults) {
       if (!r || r.comp.code === "PL") continue;
       const league = r.json?.response?.[0]?.league;
       const groups = league?.standings || [];

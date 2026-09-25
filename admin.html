@@ -70,6 +70,7 @@
       <option value="CL">Champions League</option>
       <option value="EL">Europa League</option>
       <option value="CN">Conference League</option>
+      <option value="ELC">Championship</option>
     </select>
   </div>
 
@@ -103,7 +104,7 @@ let matches = [];
 async function loadMatches() {
   const picker = document.getElementById('matchPicker');
   try {
-    const res = await fetch('/api/live-data?v=7');
+    const res = await fetch('/api/live-data?v=8');
     const data = await res.json();
     matches = [];
     // results and fixtures already carry every competition, each tagged with its own code.
@@ -165,6 +166,7 @@ const COMP_NAMES = {
   CL: 'Champions League',
   EL: 'Europa League',
   CN: 'Conference League',
+  ELC: 'Championship',
 };
 
 async function send(finished) {

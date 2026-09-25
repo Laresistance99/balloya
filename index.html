@@ -264,6 +264,9 @@
     padding-bottom:4px; scrollbar-width:none;
   }
   .filter-bar::-webkit-scrollbar{display:none;}
+  /* Four competitions no longer fit a phone's width, and the hidden scrollbar
+     left the last tab off screen with nothing to say it was there. */
+  .filter-bar.wraps{flex-wrap:wrap; overflow-x:visible;}
   .filter-pill{
     flex:0 0 auto;
     font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; font-weight:600;
@@ -406,6 +409,19 @@
     color:var(--ink-dim); margin-top:2px;
   }
   .match-tag.live{color:var(--gold);}
+  .match-tv{display:block; margin-top:5px; line-height:0;}
+
+  /* Norwegian broadcaster. The logos are drawn for a light ground (Viaplay's
+     wordmark is near-black), so they sit on white in both themes. */
+  .tv-badge{
+    display:inline-flex; align-items:center; vertical-align:middle;
+    height:19px; padding:0 6px; border-radius:4px;
+    background:#FFFFFF; border:1px solid var(--line);
+  }
+  .tv-badge img{display:block; width:auto;}
+  .tv-badge.viaplay img{height:11px;}
+  .tv-badge.tv2 img{height:15px;}
+  .tile-right{display:inline-flex; align-items:center; gap:6px; flex:none;}
   /* A cup or European round can mix competitions, so each row says which */
   .match-comp{
     grid-column:1 / -1; font-family:'IBM Plex Mono',monospace;
@@ -570,10 +586,11 @@
         <h2 class="display">Kamper</h2>
       </div>
 
-      <div class="filter-bar" role="tablist" aria-label="Filtrer turnering">
+      <div class="filter-bar wraps" role="tablist" aria-label="Filtrer turnering">
         <button class="filter-pill active" role="tab" aria-selected="true" data-filter="liga">Premier League</button>
         <button class="filter-pill" role="tab" aria-selected="false" data-filter="cup">Engelske cuper</button>
         <button class="filter-pill" role="tab" aria-selected="false" data-filter="europa">Europa</button>
+        <button class="filter-pill" role="tab" aria-selected="false" data-filter="championship">Championship</button>
       </div>
 
       <div class="filter-bar sub-bar" id="subBar" style="display:none;" role="tablist" aria-label="Velg turnering"></div>
@@ -880,7 +897,15 @@
     return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
   }
 
+  // The Championship has its own tab. Twelve second-tier matches a round would
+  // bury the Premier League in the ticker and on today's board.
+  function onFrontPage(m) {
+    return m.competition !== 'ELC';
+  }
+
   function tickerEntries(results, fixtures) {
+    results = (results || []).filter(onFrontPage);
+    fixtures = (fixtures || []).filter(onFrontPage);
     const now = Date.now();
     const live = [], recent = [];
 
@@ -1081,6 +1106,42 @@
   const LIVE_LABEL = { HT: 'PAUSE', BT: 'PAUSE', ET: 'EKSTRAOMG.', P: 'STRAFFER' };
   const DONE_LABEL = { AET: 'E.O.', PEN: 'STR.' };
 
+  // Norwegian broadcaster per competition. A competition is listed only where
+  // every match in it is confirmed shown on that channel; anything else gets no
+  // badge. Checked September 2026:
+  //   PL      all 380 on Viaplay (exclusive through 2027-28)
+  //   CL      every match on TV 2 (exclusive through 2026-27, renewed to 2031)
+  //   EL, CN  every match from the league phase to the final on Viaplay
+  // Left out on purpose: the FA Cup (shared with TV 2; the whole-round deal is
+  // confirmed only for 2025-26) and the League Cup (Viaplay holds it, but only
+  // "selected matches" are promised). The Championship likewise: Viaplay shows
+  // "more than 180" of its ~550 matches, with no list of which.
+  const TV_CHANNEL = { PL: 'viaplay', CL: 'tv2', EL: 'viaplay', CN: 'viaplay' };
+  const CHANNELS = {
+    viaplay: { key: 'viaplay', name: 'Viaplay' },
+    tv2: { key: 'tv2', name: 'TV 2' },
+  };
+
+  function tvChannel(m) {
+    const ch = TV_CHANNEL[m.competition || 'PL'];
+    if (!ch) return null;
+    // European coverage starts at the league phase. prettyRound() folds the
+    // August qualifying play-off and the February knockout play-off into the
+    // same "Playoff", so the month tells them apart.
+    if (/^Kvalifisering/.test(m.round || '')) return null;
+    const month = new Date(m.date).getMonth();
+    if (m.competition !== 'PL' && m.round === 'Playoff' && month >= 6 && month <= 8) return null;
+    return CHANNELS[ch];
+  }
+
+  // Only where it helps someone find the match: upcoming and in play.
+  function tvBadge(m) {
+    const ch = tvChannel(m);
+    return ch
+      ? `<span class="tv-badge ${ch.key}" title="Vises på ${ch.name}"><img src="img/${ch.key}.svg" alt="Vises på ${ch.name}"></span>`
+      : '';
+  }
+
   function matchTile(m, kind) {
     const live = kind === 'live', done = kind === 'done';
     const when = live
@@ -1099,7 +1160,7 @@
 
     return `<div class="tile${live ? ' is-live' : ''}${done ? ' is-done' : ''}">` +
       `<div class="tile-top"><span class="tile-when">${when}</span>` +
-      `<span class="tile-comp">${esc(m.competition || 'PL')}</span></div>` +
+      `<span class="tile-right">${done ? '' : tvBadge(m)}<span class="tile-comp">${esc(m.competition || 'PL')}</span></span></div>` +
       side(m.home, hg, homeLost) + side(m.away, ag, awayLost) + `</div>`;
   }
 
@@ -1110,10 +1171,10 @@
     if (!grid) return;
 
     const byTimeAsc = (a, b) => new Date(a.date) - new Date(b.date);
-    const played = (data.results || []).filter(r => isToday(r.date));
+    const played = (data.results || []).filter(r => onFrontPage(r) && isToday(r.date));
     const live = played.filter(r => tickerIsLive(r.status)).sort(byTimeAsc);
     const done = played.filter(r => !tickerIsLive(r.status)).sort(byTimeAsc);
-    const upcoming = (data.fixtures || []).filter(f => isToday(f.date)).sort(byTimeAsc);
+    const upcoming = (data.fixtures || []).filter(f => onFrontPage(f) && isToday(f.date)).sort(byTimeAsc);
 
     // In play first, then what is still to come, then what is already settled.
     const tiles = [
@@ -1133,7 +1194,7 @@
 
     // Nothing today — point at the next match rather than showing an empty board.
     const next = (data.fixtures || [])
-      .filter(f => new Date(f.date) > new Date())
+      .filter(f => onFrontPage(f) && new Date(f.date) > new Date())
       .sort(byTimeAsc)[0];
 
     if (!next) {
@@ -1241,10 +1302,11 @@
     const tag = live
       ? `<span class="match-tag live">${LIVE_LABEL[m.status] || 'LIVE'}</span>`
       : played ? `<span class="match-tag">${DONE_LABEL[m.status] || 'FT'}</span>` : '';
+    const tv = (live || !played) ? tvBadge(m) : '';
     return `<div class="match-row${hasScorers ? ' has-scorers' : ''}"${hasScorers ? ' tabindex="0"' : ''}>` +
       (showComp ? `<div class="match-comp">${esc(m.competitionName || '')}${m.round ? ' \u00b7 ' + esc(m.round) : ''}</div>` : '') +
       `<span class="match-side">${esc(m.home)}</span>` +
-      `<span class="match-mid${played ? '' : ' upcoming'}">${mid}${tag}</span>` +
+      `<span class="match-mid${played ? '' : ' upcoming'}">${mid}${tag}${tv ? `<span class="match-tv">${tv}</span>` : ''}</span>` +
       `<span class="match-side away">${esc(m.away)}</span>` +
       (hasScorers ? scorerPopHtml(m) : '') + `</div>`;
   }
@@ -1302,7 +1364,7 @@
     renderRound(rounds, roundIndex);
 
 
-    const counts = { liga: 0, cup: 0, europa: 0 };
+    const counts = { liga: 0, cup: 0, europa: 0, championship: 0 };
     [...(d.results || []), ...(d.fixtures || [])].forEach(m => {
       const g = m.group || 'liga';
       if (counts[g] !== undefined) counts[g]++;
@@ -1370,7 +1432,7 @@
     try {
       // The version tag gives us a fresh cache key whenever the backend changes,
       // so a bad cached response can never outlive a deploy. Bump it on backend edits.
-      const res = await fetch('/api/live-data?v=7');
+      const res = await fetch('/api/live-data?v=8');
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       latestData = data;
