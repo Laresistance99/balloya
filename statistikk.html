@@ -163,35 +163,45 @@
   .crest-sm{width:14px; height:14px; object-fit:contain; flex:none;}
   .avatar-blank{width:40px; height:40px; border-radius:50%; background:var(--blue-dim);}
 
-  /* ---------- Sortable tables (Spillere, Klubber) ---------- */
-  .table-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-card); margin-bottom:20px;}
-  table{width:100%; border-collapse:collapse;}
-  thead th{
-    text-align:left; font-family:'IBM Plex Mono', monospace; font-size:11px;
-    text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);
-    padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap;
+  /* ---------- Ranked lists (Spillere, Klubber) ---------- */
+  .rank-card{background:var(--paper-card); border:1px solid var(--line); border-radius:var(--radius); padding:20px 22px 10px; margin-bottom:12px;}
+  .rank-card h3{font-size:clamp(22px,3vw,28px); margin:0 0 14px;}
+  .rank-filters{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;}
+  /* A native select keeps the picker usable with keyboard and screen readers;
+     only its face is restyled to match the pills. */
+  .pick{
+    appearance:none; -webkit-appearance:none;
+    font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:600; color:var(--ink);
+    padding:8px 36px 8px 14px; border-radius:8px; cursor:pointer;
+    border:1px solid var(--line); background-color:var(--paper);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C8B84' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 12px center;
   }
-  thead th.num, td.num{text-align:center;}
-  th button{
-    all:unset; cursor:pointer; border-bottom:1px dotted transparent;
+  .pick:hover{border-color:var(--blue);}
+  .rank-head{
+    display:grid; grid-template-columns:44px 1fr auto; gap:12px;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.06em;
+    text-transform:uppercase; color:var(--ink-dim);
+    padding:14px 8px 8px; border-bottom:1px solid var(--line);
   }
-  th button:hover{color:var(--blue);}
-  th button:focus-visible{outline:3px solid var(--blue); outline-offset:2px;}
-  th.sorted button{color:var(--blue); border-bottom-color:var(--blue);}
-  tbody td{padding:9px 12px; border-bottom:1px solid var(--line); font-size:14px;}
-  tbody tr:last-child td{border-bottom:none;}
-  td.pos{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-dim); width:36px;}
-  td.num.sorted{font-weight:700; color:var(--blue);}
-  .cell-who{display:flex; align-items:center; gap:10px; min-width:0;}
-  .cell-who > img, .cell-who > .avatar-blank{width:32px; height:32px; flex:none;}
-  .cell-who .name{font-weight:600; white-space:nowrap;}
-  .cell-who .club{display:flex; align-items:center; gap:5px; font-size:12px; color:var(--ink-dim); white-space:nowrap;}
-  @media (max-width: 640px){
-    th.opt, td.opt{display:none;}
-    thead th, tbody td{padding-left:8px; padding-right:8px;}
-    /* Long names wrap rather than push the numbers off screen. */
-    .cell-who .name{white-space:normal;}
-    .cell-who .club{white-space:normal;}
+  .rank-head span:first-child{text-align:center;}
+  .rank-head span:last-child{text-align:right;}
+  .rank-row{display:grid; grid-template-columns:44px 40px 1fr auto; align-items:center; gap:12px; padding:12px 8px;}
+  .rank-row + .rank-row{border-top:1px solid var(--line);}
+  @media (hover: hover){ .rank-row:hover{background:var(--blue-dim); border-radius:6px;} }
+  .rank-row .rank{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px; text-align:center;}
+  .rank-row .who{min-width:0;}
+  .rank-row .name{font-weight:700; font-size:15.5px;}
+  .rank-row .meta{display:flex; align-items:center; flex-wrap:wrap; gap:4px 12px; font-size:12.5px; color:var(--ink-dim); margin-top:2px;}
+  .rank-row .meta > span{display:inline-flex; align-items:center; gap:5px;}
+  .rank-row .val{font-family:'Anton',sans-serif; font-size:26px; min-width:40px; text-align:right;}
+  .rank-row.first .val{color:var(--blue);}
+  @media (max-width: 480px){
+    .rank-card{padding:16px 14px 6px;}
+    .rank-row{grid-template-columns:28px 36px 1fr auto; gap:9px; padding:10px 2px;}
+    .rank-row .avatar, .rank-row .crest, .rank-row .avatar-blank{width:36px; height:36px;}
+    .rank-head{grid-template-columns:28px 1fr auto; gap:9px; padding-left:2px; padding-right:2px;}
+    .rank-row .name{font-size:14.5px;}
   }
 
   footer{padding:36px 0 60px; color:var(--ink-dim); font-size:12.5px;}
@@ -255,26 +265,32 @@
     { code: 'CN',  name: 'Conference League', englishOnly: true },
   ];
 
-  const PLAYER_COLS = [
-    { key: 'apps',    label: 'K',      title: 'Kamper',       opt: false },
-    { key: 'minutes', label: 'Min',    title: 'Minutter',     opt: true },
-    { key: 'goals',   label: 'Mål',    title: 'Mål',          opt: false },
-    { key: 'assists', label: 'Ass', title: 'Målgivende',   opt: false },
-    { key: 'penalties', label: 'Str',  title: 'Straffemål',   opt: true },
-    { key: 'yellow',  label: 'Gule',   title: 'Gule kort',    opt: true },
-    { key: 'red',     label: 'Røde',   title: 'Røde kort',    opt: true },
+  // The stat pickers on Spillere and Klubber. Kept deliberately short.
+  // "asc" puts the smallest number first.
+  const PLAYER_STATS = [
+    { key: 'goals',   label: 'Mål' },
+    { key: 'assists', label: 'Målgivende' },
+    { key: 'yellow',  label: 'Gule kort' },
+    { key: 'red',     label: 'Røde kort' },
+  ];
+  const CLUB_STATS = [
+    { key: 'gf',  label: 'Mål scoret', col: 'Mål' },
+    { key: 'cs',  label: 'Holdt nullen' },
+    { key: 'ga',  label: 'Færrest innslupne', col: 'Innsluppet', asc: true },
+    { key: 'won', label: 'Seire' },
   ];
 
-  const CLUB_COLS = [
-    { key: 'played', label: 'K',   title: 'Kamper',            opt: false },
-    { key: 'won',    label: 'S',   title: 'Seire',             opt: true },
-    { key: 'drawn',  label: 'U',   title: 'Uavgjort',          opt: true },
-    { key: 'lost',   label: 'T',   title: 'Tap',               opt: true },
-    { key: 'gf',     label: 'Mål', title: 'Mål scoret',        opt: false },
-    { key: 'ga',     label: 'Inn', title: 'Mål sluppet inn',   opt: false, asc: true },
-    { key: 'cs',     label: 'Null', title: 'Holdt nullen',     opt: false },
-    { key: 'gpg',    label: 'Snitt', title: 'Mål per kamp',    opt: true },
-  ];
+  // The feed names countries in English.
+  const NATION_NO = {
+    Scotland: 'Skottland', 'Northern Ireland': 'Nord-Irland', Ireland: 'Irland',
+    Norway: 'Norge', Sweden: 'Sverige', Denmark: 'Danmark', Iceland: 'Island',
+    Germany: 'Tyskland', France: 'Frankrike', Spain: 'Spania', Italy: 'Italia',
+    Netherlands: 'Nederland', Belgium: 'Belgia', Switzerland: 'Sveits', Austria: 'Østerrike', Poland: 'Polen',
+    'Czech Republic': 'Tsjekkia', Croatia: 'Kroatia', Ukraine: 'Ukraina', Turkey: 'Tyrkia', Türkiye: 'Tyrkia',
+    Greece: 'Hellas', Hungary: 'Ungarn', Brazil: 'Brasil', Morocco: 'Marokko', Algeria: 'Algerie',
+    Cameroon: 'Kamerun', "Côte d'Ivoire": 'Elfenbenskysten', 'Ivory Coast': 'Elfenbenskysten',
+    'Congo DR': 'DR Kongo', 'Korea Republic': 'Sør-Korea', 'South Korea': 'Sør-Korea',
+  };
 
   const FINISHED = ['FT', 'AET', 'PEN'];
 
@@ -427,7 +443,7 @@
     let body = '';
 
     if (tab === 'spillere') body = playersTable(code, key || 'goals', crests);
-    else if (tab === 'klubber') body = clubsTable(code, key || 'cs', crests);
+    else if (tab === 'klubber') body = clubsTable(code, key || 'gf', crests);
     else {
       body = `<div class="board-grid">
         ${playerBoard(code, 'goals', 'Mål', crests)}
@@ -443,70 +459,93 @@
       ${compTabs(code, tab)}${body}`;
   }
 
-  function sortHead(cols, key, base) {
-    return cols.map(c =>
-      `<th class="num${c.opt ? ' opt' : ''}${c.key === key ? ' sorted' : ''}"${c.key === key ? ' aria-sort="descending"' : ''}>` +
-      `<button data-href="${base}/${c.key}" title="Sorter etter ${c.title.toLowerCase()}">${c.label}</button></th>`
-    ).join('');
+  function statPicker(stats, key, base) {
+    return `<div class="rank-filters"><select class="pick" aria-label="Velg statistikk" data-base="${base}">` +
+      stats.map(s => `<option value="${s.key}"${s.key === key ? ' selected' : ''}>${s.label}</option>`).join('') +
+      `</select></div>`;
+  }
+
+  function rankOrder(list, stat, nameKey) {
+    return list.slice().sort((a, b) => {
+      const d = stat.asc ? a[stat.key] - b[stat.key] : b[stat.key] - a[stat.key];
+      return d || String(a[nameKey]).localeCompare(String(b[nameKey]), 'no');
+    });
+  }
+
+  // Level values share a place: two on five goals are both 1, the next is 3.
+  function rankPlaces(list, stat) {
+    return list.map(x => 1 + list.filter(y => stat.asc ? y[stat.key] < x[stat.key] : y[stat.key] > x[stat.key]).length);
+  }
+
+  function rankCard(title, picker, who, valueHead, rows, note) {
+    return `<div class="rank-card">
+      <h3 class="display">${esc(title)}</h3>${picker}
+      <div class="rank-head"><span>Nr.</span><span>${who}</span><span>${esc(valueHead)}</span></div>
+      ${rows}
+    </div>${note ? `<p class="note" style="margin:0 0 20px">${note}</p>` : ''}`;
+  }
+
+  function rankRow(place, img, name, meta, value) {
+    return `<div class="rank-row${place === 1 ? ' first' : ''}">
+      <span class="rank">${place}</span>${img}
+      <div class="who"><div class="name">${esc(name)}</div><div class="meta">${meta}</div></div>
+      <span class="val">${value}</span>
+    </div>`;
   }
 
   function playersTable(code, key, crests) {
-    if (!PLAYER_COLS.some(c => c.key === key)) key = 'goals';
-    if (!statsData) return `<div class="empty-note">${statsFailed ? 'Spillerstatistikk er ikke tilgjengelig akkurat nå.' : 'Laster …'}</div>`;
-    const list = sortBy(players(code), key, false, 'name');
-    if (!list.length) return `<div class="empty-note">Ingen spillerstatistikk for denne turneringen ennå.</div>`;
-    const rk = ranks(list, key);
-    const rows = list.map((p, i) => `<tr>
-      <td class="pos">${rk[i]}</td>
-      <td><div class="cell-who">${avatar(p.photo, 'avatar')}<div><div class="name">${esc(p.name)}</div>${clubLine(p.team, crests)}</div></div></td>
-      ${PLAYER_COLS.map(c => `<td class="num${c.opt ? ' opt' : ''}${c.key === key ? ' sorted' : ''}">${p[c.key]}</td>`).join('')}
-    </tr>`).join('');
-    return `<p class="note">Spillerne blant de 20 beste på mål eller målgivende. Trykk på en kolonne for å sortere.</p>
-      <div class="table-scroll"><table>
-        <thead><tr><th>#</th><th>Spiller</th>${sortHead(PLAYER_COLS, key, `#/${code}/spillere`)}</tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`;
+    const stat = PLAYER_STATS.find(s => s.key === key) || PLAYER_STATS[0];
+    const picker = statPicker(PLAYER_STATS, stat.key, `#/${code}/spillere`);
+    const title = `Spillerstatistikk – ${stat.label}`;
+    if (!statsData) {
+      const msg = statsFailed ? 'Spillerstatistikk er ikke tilgjengelig akkurat nå.' : 'Laster …';
+      return rankCard(title, picker, 'Spiller', stat.col || stat.label, `<div class="empty-note">${msg}</div>`);
+    }
+    const list = rankOrder(players(code).filter(p => p[stat.key] > 0), stat, 'name');
+    if (!list.length) return rankCard(title, picker, 'Spiller', stat.col || stat.label, '<div class="empty-note">Ingen ennå.</div>');
+    const rk = rankPlaces(list, stat);
+    const rows = list.map((p, i) => {
+      const crest = safeUrl(crests[p.team]);
+      const club = `<span>${crest ? `<img class="crest-sm" src="${crest}" alt="" loading="lazy">` : ''}${esc(p.team)}</span>`;
+      const nation = p.nationality ? `<span>${esc(NATION_NO[p.nationality] || p.nationality)}</span>` : '';
+      return rankRow(rk[i], avatar(p.photo, 'avatar'), p.name, club + nation, p[stat.key]);
+    }).join('');
+    // Each stat is the feed's own top-20 list for the competition.
+    return rankCard(title, picker, 'Spiller', stat.col || stat.label, rows, 'Topp 20 i turneringen.');
   }
 
   function clubsTable(code, key, crests) {
-    const col = CLUB_COLS.find(c => c.key === key) || CLUB_COLS.find(c => c.key === 'cs');
-    key = col.key;
-    const list = sortBy(clubStats(code), key, !!col.asc, 'team');
-    if (!list.length) return `<div class="empty-note">Ingen kamper spilt ennå.</div>`;
-    const rk = col.asc ? list.map(x => 1 + list.filter(y => y[key] < x[key]).length) : ranks(list, key);
-    const comp = COMPS.find(c => c.code === code);
+    const stat = CLUB_STATS.find(s => s.key === key) || CLUB_STATS[0];
+    const picker = statPicker(CLUB_STATS, stat.key, `#/${code}/klubber`);
+    const title = `Klubbstatistikk – ${stat.label}`;
+    const list = rankOrder(clubStats(code).filter(c => c.played > 0), stat, 'team');
+    if (!list.length) return rankCard(title, picker, 'Klubb', stat.col || stat.label, '<div class="empty-note">Ingen kamper spilt ennå.</div>');
+    const rk = rankPlaces(list, stat);
     const rows = list.map((c, i) => {
       const crest = safeUrl(crests[c.team]);
       const img = crest ? `<img class="crest" src="${crest}" alt="" loading="lazy">` : '<span class="avatar-blank"></span>';
-      return `<tr>
-        <td class="pos">${rk[i]}</td>
-        <td><div class="cell-who">${img}<div class="name">${esc(c.team)}</div></div></td>
-        ${CLUB_COLS.map(k => `<td class="num${k.opt ? ' opt' : ''}${k.key === key ? ' sorted' : ''}">${k.key === 'gpg' ? c.gpg.toFixed(2).replace('.', ',') : c[k.key]}</td>`).join('')}
-      </tr>`;
+      return rankRow(rk[i], img, c.team, `<span>${c.played} ${c.played === 1 ? 'kamp' : 'kamper'}</span>`, c[stat.key]);
     }).join('');
+    const comp = COMPS.find(c => c.code === code);
     const note = comp?.englishOnly
-      ? 'Bare engelske klubber. Talt opp fra kampene deres i turneringen.'
-      : 'Talt opp fra alle ferdigspilte kamper i turneringen. Trykk på en kolonne for å sortere.';
-    return `<p class="note">${note}</p>
-      <div class="table-scroll"><table>
-        <thead><tr><th>#</th><th>Klubb</th>${sortHead(CLUB_COLS, key, `#/${code}/klubber`)}</tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`;
+      ? 'Bare engelske klubber, talt opp fra kampene deres i turneringen.'
+      : 'Talt opp fra alle ferdigspilte kamper i turneringen.';
+    return rankCard(title, picker, 'Klubb', stat.col || stat.label, rows, note);
   }
 
   // ---------- Routing ----------
   // #/                    Oversikt, one card per competition
   // #/PL                  that competition's leader boxes
-  // #/PL/spillere/goals   players, sorted on a column
-  // #/PL/klubber/cs       clubs, sorted on a column
+  // #/PL/spillere/goals   players ranked on one stat
+  // #/PL/klubber/gf       clubs ranked on one stat
 
   function render() {
     const view = document.getElementById('view');
     if (!liveData) return;
     const [code, tab, key] = location.hash.replace(/^#\/?/, '').split('/');
     view.innerHTML = code ? viewCompetition(code, tab || 'oversikt', key) : viewOverview();
-    view.querySelectorAll('th button[data-href]').forEach(b => {
-      b.addEventListener('click', () => { location.hash = b.dataset.href; });
+    view.querySelectorAll('select.pick').forEach(sel => {
+      sel.addEventListener('change', () => { location.hash = `${sel.dataset.base}/${sel.value}`; });
     });
     const comp = COMPS.find(c => c.code === code);
     document.title = comp ? `${comp.name} – Statistikk – Balløya` : 'Statistikk – Balløya';
@@ -514,7 +553,7 @@
 
   let lastRoute = location.hash;
   window.addEventListener('hashchange', () => {
-    // A new competition starts at the top; re-sorting a table keeps the place.
+    // A new competition starts at the top; switching the stat keeps the place.
     const was = lastRoute.split('/')[1], now = location.hash.split('/')[1];
     lastRoute = location.hash;
     render();
@@ -530,7 +569,7 @@
     }).catch(() => {
       if (!liveData) view.innerHTML = '<div class="empty-note">Statistikken er ikke tilgjengelig akkurat nå.</div>';
     });
-    const stats = fetch('/api/stats?v=1').then(r => r.json()).then(d => {
+    const stats = fetch('/api/stats?v=2').then(r => r.json()).then(d => {
       if (d.error) throw new Error(d.error);
       statsData = d;
     }).catch(() => { statsFailed = true; });

@@ -18,8 +18,13 @@ const COMPETITIONS = [
   { id: 848, code: "CN" },
 ];
 
-// Two lists per competition: the top 20 by goals and the top 20 by assists.
-const BOARDS = ["topscorers", "topassists"];
+// Four lists per competition, each the top 20: goals, assists, yellow and
+// red cards.
+const BOARDS = ["topscorers", "topassists", "topyellowcards", "topredcards"];
+
+// Bump when the shape of a player changes, so an entry cached under the old
+// shape is refetched rather than served for up to six hours.
+const STORE_KEY = "stats-v2";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -48,6 +53,7 @@ function shapePlayer(item) {
     id: item.player.id,
     name: item.player.name,
     photo: item.player.photo,
+    nationality: item.player.nationality || "",
     team: s.team?.name || "",
     teamLogo: s.team?.logo || "",
     position: s.games?.position || "",
@@ -79,7 +85,7 @@ export default async () => {
   }
 
   const store = getStore("balloya-live");
-  const cached = await store.get("stats", { type: "json" }).catch(() => null);
+  const cached = await store.get(STORE_KEY, { type: "json" }).catch(() => null);
   if (cached && Date.now() - cached.fetchedAt < STATS_TTL_MS) return respond(cached, 1800);
 
   const tasks = [];
@@ -91,7 +97,7 @@ export default async () => {
   }
   const answers = await paced(tasks);
 
-  // A competition is replaced only when both its lists came back. One that
+  // A competition is replaced only when all its lists came back. One that
   // failed keeps its previous entry rather than showing half a leaderboard.
   const competitions = { ...(cached?.competitions || {}) };
   let fresh = 0;
@@ -116,7 +122,7 @@ export default async () => {
   }
 
   const payload = { fetchedAt: Date.now(), updated: new Date().toISOString(), competitions };
-  await store.setJSON("stats", payload).catch(() => {});
+  await store.setJSON(STORE_KEY, payload).catch(() => {});
   return respond(payload, 1800);
 };
 
